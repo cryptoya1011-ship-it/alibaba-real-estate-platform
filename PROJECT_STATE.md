@@ -5,7 +5,7 @@
 ## وضعیت فعلی
 - **Sprint جاری:** Sprint 1 — Platform Core (تمام‌شده)
 - **تاریخ:** 2026-09-18
-- **Commit:** `chore(init): AREP platform core — auth, tenancy, RBAC, API foundation`
+- **Commit:** `4ef84fe` — chore(init): AREP platform core — auth, tenancy, RBAC, API foundation
 - **Branch:** `main`
 - **وضعیت GitHub قبل از این Commit:** Repository کاملاً خالی بود (بدون هیچ commit). «Sprint 5A» ذکرشده در
   Master Prompt روی GitHub وجود نداشت.
