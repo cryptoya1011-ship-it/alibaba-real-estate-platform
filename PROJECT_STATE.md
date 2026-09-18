@@ -7,6 +7,11 @@
 - **تاریخ:** 2026-09-18
 - **Commit:** `4ef84fe` — chore(init): AREP platform core — auth, tenancy, RBAC, API foundation
 - **Branch:** `main`
+- **نتیجه بررسی کد قدیم (`arep-sprint5a.zip`, 2026-09-18):** ۲۲ فایل، فقط Scaffolding —
+  بدون Model (`__tablename__` صفر)، بدون Migration، بدون Test، بدون Frontend، بدون RBAC، بدون Property.
+  تمام قابلیت‌هایش (config, logging, security, db base/session, request-id/tenant middleware, health, Dockerfile)
+  در هسته فعلی به‌صورت کامل‌تر پیاده شده است. تصمیم: هسته فعلی مبنا می‌ماند؛ کد قدیم به‌عنوان
+  branch محلی `legacy/sprint-5a` و فایل ZIP در Download نگه داشته شد. هیچ کدی حذف نشد.
 - **وضعیت GitHub قبل از این Commit:** Repository کاملاً خالی بود (بدون هیچ commit). «Sprint 5A» ذکرشده در
   Master Prompt روی GitHub وجود نداشت.
 - **Runtime تأییدشده:** Python 3.12+ (تست‌شده روی 3.14)، SQLite، uvicorn — سرور بالا آمده و پاسخ داده است.
