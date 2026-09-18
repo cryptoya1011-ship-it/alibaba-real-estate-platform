@@ -1,0 +1,4 @@
+# Install on the server (needs build tools; not required on Termux/SQLite).
+-r requirements.txt
+asyncpg>=0.29
+redis>=5.0

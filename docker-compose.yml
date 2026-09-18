@@ -1,0 +1,56 @@
+# Server deployment (not needed on Termux — see scripts/termux_start.sh there).
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-arep}
+      POSTGRES_USER: ${POSTGRES_USER:-arep}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-arep} -d ${POSTGRES_DB:-arep}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENV: ${ENV:-production}
+      DEBUG: "false"
+      ALLOW_DEV_LOGIN: "false"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-arep}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-arep}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./nginx/arep.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+
+volumes:
+  db_data:
+  redis_data:
