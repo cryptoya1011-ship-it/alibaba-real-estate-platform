@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine  # no
 
 from app.core.security import build_init_data  # noqa: E402
 from app.db.models_registry import Base  # noqa: E402
-from app.db.session import get_db  # noqa: E402
+from app.db.session import get_db, get_db_public  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 DB_FILE = pathlib.Path("test_arep.db")
@@ -32,6 +32,14 @@ BOT_TOKEN = "123456:TEST-BOT-TOKEN"
 async def engine():
     if DB_FILE.exists():
         DB_FILE.unlink()
+    # Clear in-memory cache between tests (Phase 11)
+    try:
+        from app.core.cache import _memory_store
+
+        _memory_store.clear()
+    except Exception:
+        pass
+
     eng = create_async_engine("sqlite+aiosqlite:///./test_arep.db", connect_args={"check_same_thread": False})
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -39,6 +47,12 @@ async def engine():
     await eng.dispose()
     if DB_FILE.exists():
         DB_FILE.unlink()
+    try:
+        from app.core.cache import _memory_store
+
+        _memory_store.clear()
+    except Exception:
+        pass
 
 
 @pytest_asyncio.fixture
@@ -54,8 +68,18 @@ async def client(engine):
                 await session.rollback()
                 raise
 
+    async def _override_get_db_public():
+        async with factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
     app = create_app()
     app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_db_public] = _override_get_db_public
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

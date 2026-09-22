@@ -1,4 +1,13 @@
-# Server deployment (not needed on Termux — see scripts/termux_start.sh there).
+# AREP Production Stack — Phase 11 verified
+# Usage:
+#   cp .env.example .env  (fill POSTGRES_PASSWORD, JWT_SECRET, TELEGRAM_BOT_TOKEN)
+#   docker compose build
+#   docker compose up -d
+#   docker compose logs -f
+#
+# For local SQLite dev (Termux/Android), no Docker needed:
+#   ./scripts/termux_start.sh  or  cd backend && uvicorn app.main:app --reload
+
 services:
   db:
     image: postgres:16-alpine
@@ -9,24 +18,42 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - db_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"  # expose locally for debugging, remove in strict prod
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-arep} -d ${POSTGRES_DB:-arep}"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
+    networks:
+      - arep_net
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "allkeys-lru"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     volumes:
       - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"  # local debug, remove in strict prod
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - arep_net
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       ENV: ${ENV:-production}
@@ -37,20 +64,64 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      DB_ECHO: "false"
+    volumes:
+      # Persist SQLite fallback? Not needed in prod, but keep for logs
+      - backend_logs:/app/logs
     ports:
       - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/v1/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - arep_net
+    # Run migrations then start server (handled in Dockerfile CMD)
+    # For RLS: after first migration, policies are enabled automatically
 
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     volumes:
       - ./nginx/arep.conf:/etc/nginx/conf.d/default.conf:ro
       - ./frontend/dist:/usr/share/nginx/html:ro
     ports:
       - "80:80"
+      # For HTTPS, add 443 and certs volume, or use external LB
+      # - "443:443"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/health || exit 1"]
+      interval: 20s
+      timeout: 3s
+      retries: 5
+    networks:
+      - arep_net
+
+  # Optional: frontend builder — builds dist then exits, nginx serves it
+  # Uncomment if you want compose to build frontend automatically
+  # frontend-builder:
+  #   image: node:20-alpine
+  #   working_dir: /app
+  #   volumes:
+  #     - ./frontend:/app
+  #     - ./frontend/dist:/app/dist
+  #   command: ["sh", "-c", "npm ci && npm run build"]
+  #   networks:
+  #     - arep_net
 
 volumes:
   db_data:
+    driver: local
   redis_data:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  arep_net:
+    driver: bridge

@@ -37,6 +37,29 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "*"
 
+    # AI Provider: mock, openai, gemini, claude, local
+    AI_PROVIDER: str = "mock"
+    OPENAI_API_KEY: str | None = None
+    GEMINI_API_KEY: str | None = None
+    CLAUDE_API_KEY: str | None = None
+    ANTHROPIC_API_KEY: str | None = None
+
+    # Integrations Phase 15
+    TELEGRAM_PROVIDER: str = "mock"
+    TELEGRAM_BOT_USERNAME: str | None = None
+    SMS_PROVIDER: str = "mock"
+    SMS_API_KEY: str | None = None
+    KAVENEGAR_API_KEY: str | None = None
+    DIVAR_PROVIDER: str = "mock"
+    DIVAR_API_KEY: str | None = None
+    SHEYPOOR_PROVIDER: str = "mock"
+    SHEYPOOR_API_KEY: str | None = None
+    PAYMENT_PROVIDER: str = "mock"
+    PAYMENT_API_KEY: str | None = None
+    ZARINPAL_API_KEY: str | None = None
+    MAPS_PROVIDER: str = "mock"
+    OSM_NOMINATIM_URL: str | None = None
+
     @property
     def is_production(self) -> bool:
         return self.ENV.lower() == "production"

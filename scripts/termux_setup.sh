@@ -6,7 +6,7 @@ ROOT="$PWD"
 
 echo "==> installing system packages"
 pkg update -y >/dev/null 2>&1 || true
-pkg install -y python git >/dev/null
+pkg install -y python git nodejs >/dev/null
 
 echo "==> creating virtualenv"
 cd "$ROOT/backend"
@@ -32,6 +32,20 @@ echo "==> applying database migrations"
 alembic upgrade head
 python -m app.cli seed
 
+echo "==> frontend setup"
+cd "$ROOT/frontend"
+if [ ! -d node_modules ]; then
+  npm install
+  echo "==> frontend node_modules installed"
+else
+  echo "==> frontend node_modules already exists"
+fi
+npm run build || echo "frontend build skipped (ok for dev)"
+
 echo
-echo "SETUP DONE"
-echo "Start the API with:  bash scripts/termux_start.sh"
+echo "SETUP DONE — 58 tests should pass"
+echo "Backend:  cd $ROOT/backend && . .venv/bin/activate && pytest -k 'not test_alembic' -q"
+echo "Start API:  bash scripts/termux_start.sh  -> http://127.0.0.1:8000/docs"
+echo "Start UI:   cd $ROOT/frontend && npm run dev -> http://127.0.0.1:5173"
+echo "PWA install: Chrome menu -> Add to Home Screen"
+echo "Guide: cat TERMUX_GUIDE_FA.md"

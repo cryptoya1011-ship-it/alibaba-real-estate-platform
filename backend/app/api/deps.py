@@ -1,4 +1,5 @@
 """Shared FastAPI dependencies: auth context, permission guards, pagination, idempotency."""
+
 from __future__ import annotations
 
 import hashlib
@@ -9,6 +10,8 @@ from dataclasses import dataclass
 from fastapi import Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import get_cache, perm_cache_key
+from app.core.config import settings
 from app.core.errors import ForbiddenError, UnauthorizedError
 from app.core.security import decode_access_token
 from app.core.tenant import TenantContext, reset_context, set_context
@@ -36,6 +39,7 @@ async def get_context(
 
     Permissions are re-read from the database rather than trusted from the token;
     the token only carries the tenant selection and permissions_version.
+    Phase 11: Redis cache for permissions (perms:{user}:{org}:{version}) with TTL 5min.
     """
     payload = decode_access_token(token)
     user_id = int(payload.get("user_id") or 0)
@@ -54,7 +58,29 @@ async def get_context(
             membership = await MembershipRepository(session).get_membership(user_id, organization_id)
             if membership is None:
                 raise UnauthorizedError("عضویت شما در این سازمان فعال نیست")
-        roles, permission_codes = await RbacService(session).resolve(user_id, organization_id)
+
+        # Phase 11: try cache
+        cache_hit = False
+        try:
+            cache = await get_cache()
+            ckey = perm_cache_key(user_id, organization_id, user.permissions_version)
+            cached = await cache.get(ckey)
+            if cached and isinstance(cached, dict) and "roles" in cached and "permissions" in cached:
+                roles = cached["roles"]
+                permission_codes = set(cached["permissions"])
+                cache_hit = True
+        except Exception:
+            cache_hit = False
+
+        if not cache_hit:
+            roles, permission_codes = await RbacService(session).resolve(user_id, organization_id)
+            # Store in cache with 5min TTL
+            try:
+                cache = await get_cache()
+                ckey = perm_cache_key(user_id, organization_id, user.permissions_version)
+                await cache.set(ckey, {"roles": roles, "permissions": list(permission_codes)}, ttl=300)
+            except Exception:
+                pass
 
     ctx = TenantContext(
         user_id=user_id,
