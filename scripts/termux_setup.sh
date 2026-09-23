@@ -25,7 +25,23 @@ p.write_text(p.read_text().replace("JWT_SECRET=dev-only-insecure-secret", f"JWT_
 PY
   echo "==> backend/.env created with a fresh JWT_SECRET (not committed)"
 else
-  echo "==> backend/.env already exists; left untouched"
+  echo "==> backend/.env already exists; checking ENV..."
+  # Auto-fix if ENV=production left from previous run (blocks ALLOW_DEV_LOGIN)
+  if grep -q "^ENV=production" .env 2>/dev/null; then
+    echo "==> WARNING: .env has ENV=production, fixing to ENV=local for Termux..."
+    cp .env.example .env
+    SECRET=$(python -c "import secrets;print(secrets.token_urlsafe(48))")
+    python - "$SECRET" <<'PY'
+import pathlib, sys
+p = pathlib.Path(".env")
+txt = p.read_text()
+txt = txt.replace("JWT_SECRET=dev-only-insecure-secret", f"JWT_SECRET={sys.argv[1]}")
+p.write_text(txt)
+PY
+    echo "==> .env fixed to local mode"
+  else
+    echo "==> backend/.env ok, left untouched"
+  fi
 fi
 
 echo "==> applying database migrations"

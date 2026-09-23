@@ -389,6 +389,9 @@ cp backend/arep_dev.db ~/storage/shared/arep.db
 
 | مشکل | راه‌حل |
 |------|--------|
+| `ALLOW_DEV_LOGIN must be false in production` | **مهمترین خطای تو الان!** `.env` روی `ENV=production` هست. فیکس: `bash scripts/fix_env.sh` یا دستی `cp backend/.env.example backend/.env` بعد `bash scripts/termux_start.sh` |
+| `TELEGRAM_BOT_TOKEN must be set in production` | همین مشکل — `ENV=production` دارید ولی توکن ندارید. فیکس: `ENV=local` کنید. `bash scripts/fix_env.sh` |
+| `JWT_SECRET must be set in production` | همین — `.env` رو به `local` برگردونید: `cp backend/.env.example backend/.env` |
 | `alembic not found` | `.venv/bin/activate` کنید |
 | `port 8000 already in use` | `pkill -f uvicorn` یا `lsof -i :8000` |
 | Frontend `Cannot find module` | `npm install` دوباره |
