@@ -1,21 +1,27 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import App from "./App";
-import "./styles.css";
+import PublicPropertyPage from "./features/public-property";
+import { ThemeProvider, ThemedToaster } from "./state/theme";
 import { registerPWA } from "./pwa";
+import "./index.css";
 
-// Register PWA Service Worker (autoUpdate via vite-plugin-pwa)
+// PWA service worker registration (vite-plugin-pwa autoUpdate)
 registerPWA();
-
-// vite-plugin-pwa virtual module for autoUpdate
-// @ts-ignore
-if (import.meta.env.DEV) {
-  // In dev, vite-plugin-pwa still registers if devOptions.enabled=true
-  console.log("[PWA] Dev mode — SW enabled via devOptions");
-}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public deep link — no authentication required */}
+          <Route path="/p/:code" element={<PublicPropertyPage />} />
+          {/* Everything else is the authenticated app */}
+          <Route path="*" element={<App />} />
+        </Routes>
+      </BrowserRouter>
+      <ThemedToaster />
+    </ThemeProvider>
   </React.StrictMode>,
 );

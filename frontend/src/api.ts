@@ -148,7 +148,7 @@ export const api = {
   updateVisit: (id: number, payload: any) =>
     request<any>(`/visits/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
 
-  listNotifications: (params: Record<string, string | boolean | undefined> = {}) => {
+  listNotifications: (params: Record<string, string | number | boolean | undefined> = {}) => {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));

@@ -16,12 +16,16 @@ backend/          FastAPI + SQLAlchemy 2 + Alembic
   app/repositories/  BaseRepository + TenantRepository (فیلتر tenant به‌صورت مرکزی)
   app/api/v1/     endpointها + deps (auth, permission guard, pagination, idempotency)
   migrations/     Alembic
-  tests/          pytest (۲۸ تست)
-frontend/         React + TypeScript + Vite (Telegram Web App)
+  tests/          pytest (۵۹ تست)
+frontend/         React 18 + TypeScript + Vite + Tailwind (PWA / Telegram Web App)
+  src/features/   صفحات هر دامنه (املاک، CRM، بازدید، معامله، تیم، نقش‌ها، AI، یکپارچه‌سازی، ادمین)
+  src/components/ کتابخانه UI + پوسته اپ (Topbar / BottomNav / Sidebar)
+  src/__tests__/  Vitest + Testing Library (۲۲ تست UI)
 nginx/            reverse proxy برای سرور
 scripts/          نصب و اجرا روی Termux
 docker-compose.yml  اجرا روی سرور (PostgreSQL + Redis + Nginx)
 PROJECT_STATE.md  وضعیت پروژه برای ادامه کار در Session جدید
+docs/UI_REDESIGN_NOTES.md  مستند بازطراحی رابط کاربری فاز ۱۶ (پالت، مسیرها، کامپوننت‌ها)
 ```
 
 ---
@@ -34,7 +38,7 @@ bash scripts/termux_setup.sh      # یک‌بار
 bash scripts/termux_start.sh      # هر بار اجرا
 ```
 
-سپس در مرورگر گوشی: `http://127.0.0.1:8000/docs`
+سپس در مرورگر گوشی: `http://127.0.0.1:8000/docs` و رابط کاربری: `http://127.0.0.1:5173`
 
 پایگاه داده پیش‌فرض SQLite است تا روی Android بدون Docker کار کند؛ روی سرور فقط
 `DATABASE_URL` به PostgreSQL تغییر می‌کند و کد تغییر نمی‌کند.

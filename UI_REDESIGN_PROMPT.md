@@ -1,5 +1,9 @@
 # 🎨 UI/UX FULL REDESIGN BRIEF — AREP (Alibaba Real-Estate Platform)
 
+> ✅ **وضعیت: انجام شد (DONE).** این بریف در «فاز ۱۶» توسط خودِ تیم پیاده‌سازی شد؛
+> خروجی در `docs/UI_REDESIGN_NOTES.md` مستند شده است. این فایل صرفاً به‌عنوان
+> مرجع/چک‌لیست و برای بازبینی مستقل (Review) توسط AI دیگر نگه داشته شده است.
+
 > 🇮 **نکته برای کاربر:** این فایل + زیپ پروژه را به هوش مصنوعی بدهید. این بریف طوری نوشته شده که AI نتواند هیچ قابلیتی را حذف یا خراب کند و فقط رابط گرافیکی را مدرن کند.
 >
 > **Note for the AI:** You are a world-class product designer + senior React architect. Your ONLY job is to completely redesign the frontend UI/UX of this project to a premium, modern, 2026-grade experience — in BOTH the tenant/admin panel and the user/public side — with **zero feature loss and zero backend changes**. Read this entire brief, then read the repo, then implement.

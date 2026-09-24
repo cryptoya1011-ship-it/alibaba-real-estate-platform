@@ -2,6 +2,15 @@
 
 > این فایل برای ادامه کار در Session جدید است. اول این را بخوان، بعد کد.
 
+## 🔴 آخرین وضعیت (فاز ۱۶ — بازطراحی رابط کاربری، 2026-09-24)
+- **Branch:** `arena/01a0c452-alibaba-real-estate-platform` • **آخرین Commit قبل از این:** `def53b3`
+- فرانت‌اند **کامل بازنویسی شد**: ۱۲ فایل feature + کتابخانه UI + Design Token، بدون هیچ تغییری در بک‌اند.
+- استک: Tailwind CSS + lucide-react + sonner + react-router-dom + recharts (Lazy) — فونت Vazirmatn self-host.
+- تم روشن/تیره، Bottom Navigation موبایل + Sidebar دسکتاپ، صفحه عمومی `/p/{code}` مستقل، صفحه ادمین با نمودار.
+- **تست‌ها:** `cd frontend && npm test` → ۲۲ تست ✅ | `cd backend && python -m pytest` → ۵۹ تست ✅ | `npm run build` ✅
+- مستندات: `docs/UI_REDESIGN_NOTES.md` (کامل) + ADR-009/ADR-010 در `docs/DECISIONS.md`.
+- UI قبلی حذف نشده بلکه جایگزین شده؛ برای مقایسه، Commit قبلی را checkout کنید (تاریخچه محفوظ است).
+
 ## وضعیت فعلی
 - **Sprint جاری:** Sprint 1 — Platform Core (تمام‌شده)
 - **تاریخ:** 2026-09-18

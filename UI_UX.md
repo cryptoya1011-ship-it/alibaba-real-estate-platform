@@ -7,20 +7,22 @@
 - **Touch-friendly:** حداقل 44px touch target, فاصله کافی
 - **سریع, تمیز, مینیمال, حرفه‌ای, قابل فهم**
 
-## 2. رنگ برند (بند 12)
+## 2. رنگ برند (بند 12) — پالت اجراشده در فاز ۱۶
 
-- **Deep Petrol Blue:** #1B3A5C — Primary, Header, Navigation, CTA اصلی
-- **Gold:** #C9A84C — Accent, Badge, Highlight, لوگو
-- **White:** #F5F5F5 — Background اصلی
-- **Light Gray:** #E0E0E0 — Border, Divider, Disabled
+پالت نهایی در `frontend/src/index.css` به‌صورت Design Token پیاده شده است
+(جزئیات کامل: `docs/UI_REDESIGN_NOTES.md`):
 
-پالت تکمیلی پیشنهادی:
-- Success: #2E7D32
-- Warning: #ED6C02
-- Error: #D32F2F
-- Info: #0288D1
-- Text Primary: #212121
-- Text Secondary: #757575
+- **Primary (Teal):** `#0d9488` — روشن / `#2dd4bf` — تیره → برند، CTA، آیتم فعال
+- **Primary Soft:** `#ccfbf1` — روشن / `#134e4a` — تیره → چیپ، پس‌زمینه فعال
+- **Gold (Accent):** `#b48d2d` — روشن / `#d6b25e` — تیره → قیمت، Badge، تأکید
+- **Background:** `#f4f6f9` — روشن / `#070b12` — تیره
+- **Surface (Card):** `#ffffff` — روشن / `#0f1622` — تیره
+- **Border/Line:** `#e4e7ed` — روشن / `#232e3f` — تیره
+- **Text:** `#111827` / `#e5eaf2` — ثانویه: `#6b7280` / `#8b96a8`
+
+وضعیت‌ها: Success `#16a34a`/`#4ade80` — Warning `#d97706`/`#fbbf24` — Error `#dc2626`/`#f87171`.
+
+> تم تیره و روشن هر دو پشتیبانی می‌شوند؛ انتخاب کاربر ذخیره و به `prefers-color-scheme` هم احترام گذاشته می‌شود.
 
 ## 3. Design System (بند 11)
 

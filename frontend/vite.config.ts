@@ -12,8 +12,8 @@ export default defineConfig({
         name: "املاک علی‌بابا — AREP",
         short_name: "علی‌بابا",
         description: "پلتفرم مدیریت املاک علی‌بابا — ثبت ملک، مشتری، بازدید، معامله",
-        theme_color: "#1B3A5C",
-        background_color: "#F5F5F5",
+        theme_color: "#0d9488",
+        background_color: "#f4f6f9",
         display: "standalone",
         scope: "/",
         start_url: "/",
@@ -107,5 +107,17 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
   },
-  build: { outDir: "dist", sourcemap: false },
+  build: {
+    outDir: "dist",
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Keep the initial mobile payload small
+          react: ["react", "react-dom", "react-router-dom"],
+          charts: ["recharts"],
+        },
+      },
+    },
+  },
 });

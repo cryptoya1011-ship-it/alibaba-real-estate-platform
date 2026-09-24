@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Vazirmatn — self-hosted for offline PWA ─────────────────────────── */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* ── Design tokens (light) ───────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+  --c-bg: 243 245 248;
+  --c-surface: 255 255 255;
+  --c-raise: 247 249 252;
+  --c-ink: 18 26 40;
+  --c-muted: 108 117 131;
+  --c-line: 226 230 237;
+  --c-brand: 13 148 136;
+  --c-brand-soft: 214 245 240;
+  --c-gold: 171 130 38;
+  --c-ok: 22 163 74;
+  --c-warn: 217 119 6;
+  --c-danger: 220 38 38;
+}
+
+/* ── Design tokens (dark) ────────────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+  --c-bg: 7 11 18;
+  --c-surface: 15 22 34;
+  --c-raise: 23 32 48;
+  --c-ink: 228 233 241;
+  --c-muted: 138 149 166;
+  --c-line: 36 47 65;
+  --c-brand: 45 212 191;
+  --c-brand-soft: 17 62 60;
+  --c-gold: 216 180 96;
+  --c-ok: 74 222 128;
+  --c-warn: 251 191 36;
+  --c-danger: 248 113 113;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+  }
+  ::selection {
+    @apply bg-brand/30;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  input[type="date"],
+  input[type="time"] {
+    direction: ltr;
+    text-align: right;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .ltr {
+    direction: ltr;
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Thin elegant scrollbars on desktop */
+@media (pointer: fine) {
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-line;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

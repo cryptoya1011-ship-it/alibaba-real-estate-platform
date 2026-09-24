@@ -44,3 +44,21 @@ Retry همان بدنه، همان پاسخ را برمی‌گرداند. است
 تمام Dependencyها Open Source و Self-hosted هستند: FastAPI، SQLAlchemy، Alembic، PyJWT، React، Vite،
 PostgreSQL، Redis، Nginx. هیچ SDK ابری، سرویس پرداخت خارجی یا AI API خارجی در مسیر اصلی وجود ندارد.
 تنها منبع خارجی، اسکریپت `telegram-web-app.js` است که خود تلگرام سرو می‌کند و در صورت نیاز قابل host شدن محلی است.
+
+## ADR-009 — استک رابط کاربری فاز ۱۶ (Tailwind + Design Tokens)
+**تصمیم:** فرانت‌اند روی **Tailwind CSS v3** با توکن‌های CSS Variable (RGB triplet) و کلاس‌های معنایی
+(`bg-surface`, `text-ink`, `border-line`, `bg-brand`) بازنویسی شد؛ به‌همراه `lucide-react` (آیکون)،
+`sonner` (توست)، `react-router-dom` (مسیر و Deep Link) و `recharts` فقط برای داشبورد ادمین (Chunk جدا + Lazy).
+**چرا:** بدون وابستگی به CDN تحریم‌شده یا فونت آنلاین؛ فونت **Vazirmatn** در `frontend/public/fonts`
+self-host می‌شود تا PWA آفلاین هم فارسی درست نشان دهد. تمام کامپوننت‌ها روی توکن‌ها ساخته شده‌اند، پس
+تغییر تم (روشن/تیره) با یک کلاس روی `<html>` انجام می‌شود و هیچ رنگی در کد Hardcode نشده است.
+**هزینه/ریسک:** یک Dependency جدید در باندل (~۱۱۴KB gzip برای بار اول موبایل). برای فاز بعد،
+`react-hook-form + zod` برای فرم‌های بلند پیشنهاد می‌شود.
+**تست:** `npm test` (Vitest + Testing Library) و `tsc -b && vite build` بخشی از Definition of Done شد.
+
+## ADR-010 — حفظ قرارداد API در بازطراحی UI
+**تصمیم:** `frontend/src/api.ts` به‌عنوان تنها لایه ارتباط با بک‌اند دست‌نخورده ماند (فقط یک نوع
+پارامتر در `listNotifications` عمومی‌تر شد). Envelope استاندارد `{success, data, error, meta}`،
+`ApiError`، هدر `Idempotency-Key` و صف آفلاین (`arep_outbox` در localStorage) بدون تغییر باقی ماندند.
+**چرا:** بازطراحی «رابط» نباید «قرارداد» را تغییر دهد؛ با این کار ۵۹ تست بک‌اند و تمام مهاجرت‌های
+Alembic بدون هیچ تغییری سبز ماندند و امکان بازگشت (rollback) صرفاً با برگرداندن پوشه فرانت فراهم است.

@@ -2,10 +2,10 @@
 <html lang="fa" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#1B3A5C" />
-    <meta name="background-color" content="#F5F5F5" />
-    <meta name="description" content="پلتفرم مدیریت املاک علی‌بابا — ثبت ملک، مشتری، بازدید، معامله" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#0d9488" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#070b12" />
+    <meta name="description" content="پلتفرم مدیریت املاک علی‌بابا — ثبت ملک، مشتری، بازدید، معامله، هوش مصنوعی و یکپارچه‌سازی" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="علی‌بابا" />
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-    <!-- Open Graph / SEO defaults — dynamic OG will be injected by JS for public pages -->
+    <!-- Open Graph / SEO defaults — dynamic OG values are injected by JS on public pages -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="املاک علی‌بابا" />
     <meta property="og:title" content="املاک علی‌بابا — پلتفرم مدیریت املاک" />
@@ -21,13 +21,23 @@
     <meta property="og:image" content="/icons/icon-512.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>املاک علی‌بابا</title>
+    <script>
+      // Apply the saved theme before paint to avoid a flash of the wrong theme
+      (function () {
+        try {
+          var saved = localStorage.getItem("arep_theme");
+          var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <noscript>
-      <div style="padding:16px;text-align:center;font-family:sans-serif">
+      <div style="padding: 16px; text-align: center; font-family: sans-serif; direction: rtl">
         برای استفاده از املاک علی‌بابا لطفاً جاوااسکریپت را فعال کنید.
       </div>
     </noscript>
