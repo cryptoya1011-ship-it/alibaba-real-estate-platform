@@ -435,3 +435,45 @@ npm run dev   # هر بار
 ```
 
 موفق باشید! 🏠🚀
+
+---
+
+## 🎨 به‌روزرسانی به رابط کاربری جدید (فاز ۱۶)
+
+رابط کاربری کاملاً بازطراحی شده است (Tailwind + تم روشن/تیره + ناوبری موبایل + صفحه عمومی جدید).
+چون **وابستگی‌های جدید npm اضافه شده‌اند**، فقط `git pull` کافی نیست؛ یک‌بار `npm install` لازم است.
+
+```bash
+# ۱) آپدیت کد (از ریشه پروژه)
+cd ~/alibaba-real-estate-platform
+git fetch origin
+git checkout arena/01a0c452-alibaba-real-estate-platform
+git reset --hard origin/arena/01a0c452-alibaba-real-estate-platform
+
+# ۲) نصب وابستگی‌های جدید فرانت (یک‌بار؛ چند دقیقه طول می‌کشد)
+cd frontend
+npm install
+
+# ۳) اجرا
+cd ~/alibaba-real-estate-platform
+bash scripts/termux_start.sh      # ترمینال ۱ → بک‌اند روی 8000
+
+cd ~/alibaba-real-estate-platform/frontend
+npx vite --host --port 5173       # ترمینال ۲ → رابط کاربری روی 5173
+```
+
+سپس در Chrome گوشی: **`http://127.0.0.1:5173`**
+
+### اگر خطا گرفتید
+| خطا | راه‌حل |
+| --- | --- |
+| `Cannot find module 'tailwindcss'` یا `sonner` | در پوشه `frontend` دوباره `npm install` بزنید (وابستگی‌های جدید) |
+| `Failed to resolve import "recharts"` | همان بالا — نصب کامل نشده |
+| صفحه سفید و در کنسول `Unexpected token` | کش مرورگر: DevTools → Application → Unregister Service Worker و Hard Reload (یا حالت ناشناس) |
+| فونت فارسی زشت/پیش‌فرض است | فایل‌های فونت در `frontend/public/fonts/` باید موجود باشند (`ls public/fonts`) |
+
+### نکات جدید
+- **تم روشن/تیره:** آیکون ماه/خورشید در نوار بالا؛ انتخاب شما ذخیره می‌شود.
+- **منوی موبایل:** ۴ تب اصلی پایین صفحه + دکمه «بیشتر» برای تیم، نقش‌ها، AI، یکپارچه‌سازی، ادمین.
+- **لینک عمومی ملک:** `http://127.0.0.1:5173/p/<کد ملک>` — بدون ورود باز می‌شود.
+- **صف آفلاین:** اگر اینترنت قطع باشد، شمارنده در نوار بالا نمایش داده می‌شود؛ با وصل شدن، روی همان چیپ بزنید تا همگام‌سازی شود.
