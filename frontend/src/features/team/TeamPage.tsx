@@ -56,7 +56,11 @@ export default function TeamPage() {
     setParams(next, { replace: true });
   };
 
-  const roleTitle = (code: string) => roles.data?.find((r) => r.code === code)?.title ?? roleLabel(code);
+  // System roles are stored with their code as title — always show the Persian label for them.
+  const roleTitle = (code: string) => {
+    const role = roles.data?.find((r) => r.code === code);
+    return role && !role.is_system ? role.title : roleLabel(code);
+  };
 
   const revoke = async (inv: Invitation) => {
     const ok = await confirm({
@@ -178,7 +182,7 @@ export default function TeamPage() {
         <DialogContent title="دعوت عضو جدید" description="یک توکن یک‌بار مصرف ساخته می‌شود">
           <InviteForm
             orgId={orgId}
-            roleOptions={(roles.data ?? []).map((r) => ({ value: r.code, label: r.title || roleLabel(r.code), hint: r.is_system ? "سیستمی" : "سفارشی" }))}
+            roleOptions={(roles.data ?? []).map((r) => ({ value: r.code, label: r.is_system ? roleLabel(r.code) : r.title || r.code, hint: r.is_system ? "سیستمی" : "سفارشی" }))}
             onCreated={(t) => {
               setCreateOpen(false);
               setToken(t);

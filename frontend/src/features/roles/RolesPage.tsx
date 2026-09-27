@@ -135,7 +135,7 @@ function RoleCard({ role, orgId }: { role: Role; orgId: number }) {
           {role.is_system ? <Lock className="size-[18px]" aria-hidden /> : <ShieldPlus className="size-[18px]" aria-hidden />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">{role.title || roleLabel(role.code)}</p>
+          <p className="font-semibold">{role.is_system ? roleLabel(role.code) : role.title || role.code}</p>
           <div className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
             <Code>{role.code}</Code>
             <span className="tnum">
