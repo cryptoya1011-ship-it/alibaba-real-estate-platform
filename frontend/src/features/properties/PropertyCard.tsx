@@ -27,7 +27,14 @@ export function PropertyCard({
   onSuggest?: () => void;
 }) {
   const p = property;
-  const price = p.transaction_type === "rent" && p.rent_price ? p.rent_price : p.price;
+  const isRent = p.transaction_type === "rent";
+  const price = isRent ? p.rent_price ?? null : p.price;
+  const priceText =
+    p.transaction_type === "partnership"
+      ? "مشارکت در ساخت"
+      : isRent && !p.rent_price && p.deposit
+        ? `رهن ${compactToman(p.deposit)}`
+        : compactToman(price);
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-[16px] bg-card hairline shadow-sm transition-[box-shadow,border-color,transform] duration-200 hover:border-border-strong hover:shadow-md">
       <button type="button" onClick={onOpen} className="relative block h-36 w-full overflow-hidden text-start" aria-label={`جزئیات ${p.title}`}>
@@ -39,8 +46,8 @@ export function PropertyCard({
         </div>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent p-3 pt-8">
           <p className="tnum text-title font-bold text-white drop-shadow">
-            {compactToman(price)}
-            {p.transaction_type === "rent" && p.rent_price ? <span className="text-caption font-normal"> / ماهانه</span> : null}
+            {priceText}
+            {isRent && p.rent_price ? <span className="text-caption font-normal"> / ماهانه</span> : null}
           </p>
         </div>
       </button>

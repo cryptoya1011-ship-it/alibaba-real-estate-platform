@@ -4,6 +4,15 @@ import type {
   AdminOrgStats,
   AdminUser,
   AIDescription,
+  Branch,
+  BranchCreatePayload,
+  BranchUpdatePayload,
+  CustomerRequestUpdatePayload,
+  Member,
+  OrganizationUpdatePayload,
+  PropertyMedia,
+  SavedSearchMatch,
+  VisitUpdatePayload,
   AIMatch,
   AIParsed,
   AIProviders,
@@ -90,10 +99,36 @@ export function onUnauthorized(listener: UnauthorizedListener) {
   };
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+// ---- Silent re-authentication ----
+// A 401 usually means the token was invalidated (permissions changed, invitation
+// accepted, super-admin toggled, 12h expiry, database reset). The session layer
+// registers a handler that logs in again (Telegram initData / dev login) and
+// returns true on success; the failed request is then retried once with the
+// same options, so its Idempotency-Key is preserved.
+type ReauthHandler = () => Promise<boolean>;
+let reauthHandler: ReauthHandler | null = null;
+let reauthInFlight: Promise<boolean> | null = null;
+export function setReauthHandler(handler: ReauthHandler | null) {
+  reauthHandler = handler;
+}
+function reauthenticate(): Promise<boolean> {
+  if (!reauthHandler) return Promise.resolve(false);
+  if (!reauthInFlight) {
+    reauthInFlight = reauthHandler()
+      .catch(() => false)
+      .finally(() => {
+        reauthInFlight = null;
+      });
+  }
+  return reauthInFlight;
+}
+
+async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const headers = new Headers(options.headers ?? {});
-  headers.set("Content-Type", "application/json");
-  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+  // FormData sets its own multipart boundary; everything else is JSON.
+  if (!(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
+  const tokenUsed = accessToken;
+  if (tokenUsed) headers.set("Authorization", `Bearer ${tokenUsed}`);
 
   let response: Response;
   try {
@@ -120,10 +155,26 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       response.status,
       body.error?.details ?? [],
     );
-    if (response.status === 401 && accessToken) unauthorizedListeners.forEach((l) => l(err));
+    if (response.status === 401 && tokenUsed && !path.startsWith("/auth/")) {
+      if (!isRetry) {
+        // Another request already refreshed the token → just retry with it.
+        if (accessToken && accessToken !== tokenUsed) return request<T>(path, options, true);
+        if (await reauthenticate()) return request<T>(path, options, true);
+      }
+      // Only the request made with the *current* token may end the session;
+      // a late 401 for an old token must not wipe a freshly issued one.
+      if (accessToken === tokenUsed) unauthorizedListeners.forEach((l) => l(err));
+    }
     throw err;
   }
   return body.data;
+}
+
+/** Public URL of an uploaded property image (full size or thumbnail). */
+export function mediaUrl(key: string | null | undefined, size: "full" | "thumb" = "full"): string | null {
+  if (!key) return null;
+  if (/^(https?:|data:|blob:)/.test(key)) return key;
+  return `${BASE}/media/${key.replace(/^\/+/, "")}${size === "thumb" ? "?size=thumb" : ""}`;
 }
 
 /** Serialize a params object into a query string, skipping empty values. */
@@ -342,6 +393,98 @@ export const api = {
       body: JSON.stringify({ lat1, lng1, lat2, lng2 }),
     }),
   intListLogs: (params: QueryParams = {}) => request<IntegrationLog[]>(`/integrations/logs${toQuery(params)}`),
+
+  // ---- Added with the photo / members / CRUD-completion work (additive) ----
+  getMe: () => request<Record<string, unknown>>("/me"),
+  getOrganization: (orgId: number) => request<Organization>(`/organizations/${orgId}`),
+  updateOrganization: (orgId: number, payload: OrganizationUpdatePayload) =>
+    request<Organization>(`/organizations/${orgId}`, { method: "PATCH", body: JSON.stringify(payload) }),
+
+  deleteProperty: (id: number, version?: number) =>
+    request<unknown>(`/properties/${id}${toQuery({ version })}`, { method: "DELETE" }),
+  listPropertyMedia: (propertyId: number) => request<PropertyMedia[]>(`/properties/${propertyId}/media`),
+  uploadPropertyMedia: (propertyId: number, file: Blob, fileName: string) => {
+    const form = new FormData();
+    form.append("file", file, fileName);
+    return request<PropertyMedia>(`/properties/${propertyId}/media`, { method: "POST", body: form });
+  },
+  setPrimaryPropertyMedia: (propertyId: number, mediaId: number) =>
+    request<PropertyMedia[]>(`/properties/${propertyId}/media/${mediaId}/primary`, { method: "POST" }),
+  reorderPropertyMedia: (propertyId: number, mediaIds: number[]) =>
+    request<PropertyMedia[]>(`/properties/${propertyId}/media/order`, {
+      method: "PUT",
+      body: JSON.stringify({ media_ids: mediaIds }),
+    }),
+  deletePropertyMedia: (propertyId: number, mediaId: number) =>
+    request<PropertyMedia[]>(`/properties/${propertyId}/media/${mediaId}`, { method: "DELETE" }),
+
+  deletePerson: (id: number, version?: number) =>
+    request<unknown>(`/persons/${id}${toQuery({ version })}`, { method: "DELETE" }),
+  addPersonRole: (id: number, role: string) =>
+    request<{ id: number; roles: { role: string }[] }>(`/persons/${id}/roles`, {
+      method: "POST",
+      body: JSON.stringify({ role }),
+    }),
+  removePersonRole: (id: number, role: string) =>
+    request<{ id: number; roles: { role: string }[] }>(`/persons/${id}/roles/${encodeURIComponent(role)}`, {
+      method: "DELETE",
+    }),
+
+  getRequest: (id: number) => request<CustomerRequest & { version: number }>(`/customer-requests/${id}`),
+  updateRequest: (id: number, payload: CustomerRequestUpdatePayload) =>
+    request<{ id: number; status: string; version: number }>(`/customer-requests/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  deleteRequest: (id: number, version?: number) =>
+    request<unknown>(`/customer-requests/${id}${toQuery({ version })}`, { method: "DELETE" }),
+
+  getSavedSearch: (id: number) => request<SavedSearch>(`/saved-searches/${id}`),
+  updateSavedSearch: (
+    id: number,
+    payload: { name?: string; query?: Record<string, unknown>; is_active?: boolean; version: number },
+  ) => request<SavedSearch>(`/saved-searches/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteSavedSearch: (id: number) => request<unknown>(`/saved-searches/${id}`, { method: "DELETE" }),
+  listSavedSearchMatches: (id: number, params: QueryParams = {}) =>
+    request<SavedSearchMatch[]>(`/saved-searches/${id}/matches${toQuery(params)}`),
+
+  getVisit: (id: number) => request<Visit>(`/visits/${id}`),
+  patchVisit: (id: number, payload: VisitUpdatePayload) =>
+    request<Visit>(`/visits/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteVisit: (id: number) => request<unknown>(`/visits/${id}`, { method: "DELETE" }),
+
+  deleteDeal: (id: number, version?: number) =>
+    request<unknown>(`/deals/${id}${version ? `?version=${version}` : ""}`, { method: "DELETE" }),
+  deleteNotification: (id: number) => request<unknown>(`/notifications/${id}`, { method: "DELETE" }),
+
+  listMembers: () => request<Member[]>("/organizations/current/members"),
+  setMemberRoles: (userId: number, roleCodes: string[]) =>
+    request<Member>(`/organizations/current/members/${userId}/roles`, {
+      method: "PUT",
+      body: JSON.stringify({ role_codes: roleCodes }),
+    }),
+  setMemberBranches: (userId: number, branchIds: number[], defaultBranchId?: number | null) =>
+    request<Member>(`/organizations/current/members/${userId}/branches`, {
+      method: "PUT",
+      body: JSON.stringify({ branch_ids: branchIds, default_branch_id: defaultBranchId ?? null }),
+    }),
+  setMemberActive: (userId: number, isActive: boolean) =>
+    request<Member>(`/organizations/current/members/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active: isActive }),
+    }),
+  removeMember: (userId: number) =>
+    request<unknown>(`/organizations/current/members/${userId}`, { method: "DELETE" }),
+
+  listBranches: () => request<Branch[]>("/organizations/current/branches?limit=100"),
+  createBranch: (payload: BranchCreatePayload, idempotencyKey: string) =>
+    request<Branch>("/organizations/current/branches", {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify(payload),
+    }),
+  updateBranch: (id: number, payload: BranchUpdatePayload) =>
+    request<Branch>(`/organizations/current/branches/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
 };
 
 // Offline outbox — Phase 10

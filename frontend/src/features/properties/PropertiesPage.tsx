@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
-import { Building2, Plus, RotateCw, SlidersHorizontal } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Bookmark, Building2, Car, ArrowUpFromLine, Plus, RotateCw, SlidersHorizontal, X } from "lucide-react";
 import { api } from "@/api";
 import { useApi } from "@/hooks/useApi";
 import { useDebounced } from "@/hooks/useMisc";
 import { useCreateParam } from "@/hooks/useCreateParam";
-import { PROPERTY_STATUSES, PROPERTY_TYPES, TRANSACTION_TYPES } from "@/lib/constants";
-import { faNum } from "@/lib/format";
+import { CITIES, PROPERTY_STATUSES, PROPERTY_TYPES, TRANSACTION_TYPES } from "@/lib/constants";
+import { compactToman, faNum, parseNumber } from "@/lib/format";
+import { cn } from "@/lib/cn";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
@@ -18,33 +20,86 @@ import { useFavorites } from "@/features/favorites/useFavorites";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyForm } from "./PropertyForm";
 import { PropertyDetailDialog } from "./PropertyDetailDialog";
+import { SavedSearchesDialog, type SearchQuery } from "./SavedSearches";
 
 const ALL = "all";
+
+function ToggleChip({ on, onClick, icon, label }: { on: boolean; onClick: () => void; icon: ReactNode; label: string }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={cn(
+        "flex h-11 items-center justify-center gap-1.5 rounded-[12px] border px-3 text-caption font-medium transition-colors [&_svg]:size-4",
+        on ? "border-primary bg-primary-soft text-primary" : "border-input bg-card-2 text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
 
 export default function PropertiesPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState(ALL);
   const [type, setType] = useState(ALL);
   const [transaction, setTransaction] = useState(ALL);
+  const [city, setCity] = useState(ALL);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [rooms, setRooms] = useState(ALL);
+  const [parking, setParking] = useState(false);
+  const [elevator, setElevator] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [savedOpen, setSavedOpen] = useState(false);
   const [createOpen, setCreateOpen] = useCreateParam();
   const [detail, setDetail] = useState<{ id: number; suggest: boolean } | null>(null);
   const dq = useDebounced(q, 300);
+  const dMin = useDebounced(minPrice, 400);
+  const dMax = useDebounced(maxPrice, 400);
 
-  const params = useMemo(
+  const query = useMemo<SearchQuery>(
     () => ({
-      limit: 50,
       q: dq.trim() || undefined,
       status: status === ALL ? undefined : status,
       property_type: type === ALL ? undefined : type,
       transaction_type: transaction === ALL ? undefined : transaction,
+      city_code: city === ALL ? undefined : city,
+      min_price: parseNumber(dMin) ?? undefined,
+      max_price: parseNumber(dMax) ?? undefined,
+      rooms: rooms === ALL ? undefined : Number(rooms),
+      has_parking: parking || undefined,
+      has_elevator: elevator || undefined,
     }),
-    [dq, status, type, transaction],
+    [dq, status, type, transaction, city, dMin, dMax, rooms, parking, elevator],
   );
+  const params = useMemo(() => ({ limit: 50, ...query }), [query]);
 
   const { data, error, loading, reload, refreshing } = useApi(() => api.listProperties(params), [params], { keys: ["properties"] });
   const favorites = useFavorites();
-  const activeFilters = [status, type, transaction].filter((v) => v !== ALL).length;
+  const activeFilters =
+    [status, type, transaction, city, rooms].filter((v) => v !== ALL).length +
+    (minPrice ? 1 : 0) +
+    (maxPrice ? 1 : 0) +
+    (parking ? 1 : 0) +
+    (elevator ? 1 : 0);
+
+  const applyQuery = (sq: SearchQuery) => {
+    setQ(sq.q ?? "");
+    setStatus(sq.status ?? ALL);
+    setType(sq.property_type ?? ALL);
+    setTransaction(sq.transaction_type ?? ALL);
+    setCity(sq.city_code ?? ALL);
+    setMinPrice(sq.min_price ? String(sq.min_price) : "");
+    setMaxPrice(sq.max_price ? String(sq.max_price) : "");
+    setRooms(sq.rooms ? String(sq.rooms) : ALL);
+    setParking(!!sq.has_parking);
+    setElevator(!!sq.has_elevator);
+    setShowFilters(true);
+  };
+  const clearFilters = () => applyQuery({});
 
   const filters = (
     <>
@@ -61,6 +116,30 @@ export default function PropertiesPage() {
         onValueChange={setTransaction}
         options={[{ value: ALL, label: "همه معاملات" }, ...TRANSACTION_TYPES]}
       />
+      <Select
+        aria-label="شهر"
+        value={city}
+        onValueChange={setCity}
+        options={[{ value: ALL, label: "همه شهرها" }, ...CITIES.map((c) => ({ value: c.code, label: c.name }))]}
+      />
+      <div className="relative">
+        <Input aria-label="حداقل قیمت (تومان)" inputMode="numeric" className="tnum" placeholder="حداقل قیمت" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
+        {minPrice && <span className="tnum pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">{compactToman(parseNumber(minPrice))}</span>}
+      </div>
+      <div className="relative">
+        <Input aria-label="حداکثر قیمت (تومان)" inputMode="numeric" className="tnum" placeholder="حداکثر قیمت" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+        {maxPrice && <span className="tnum pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">{compactToman(parseNumber(maxPrice))}</span>}
+      </div>
+      <Select
+        aria-label="تعداد اتاق"
+        value={rooms}
+        onValueChange={setRooms}
+        options={[{ value: ALL, label: "تعداد اتاق" }, ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: `${faNum(n)} اتاق` }))]}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <ToggleChip on={parking} onClick={() => setParking((v) => !v)} icon={<Car aria-hidden />} label="پارکینگ" />
+        <ToggleChip on={elevator} onClick={() => setElevator((v) => !v)} icon={<ArrowUpFromLine aria-hidden />} label="آسانسور" />
+      </div>
     </>
   );
 
@@ -72,6 +151,9 @@ export default function PropertiesPage() {
         description={data ? `${faNum(data.length)} ملک${activeFilters || dq ? " مطابق فیلتر" : ""}` : "فایل‌های ملکی سازمان"}
         actions={
           <>
+            <Button variant="secondary" size="icon" onClick={() => setSavedOpen(true)} aria-label="جستجوهای ذخیره‌شده" title="جستجوهای ذخیره‌شده">
+              <Bookmark aria-hidden />
+            </Button>
             <Button variant="ghost" size="icon" onClick={reload} aria-label="بارگذاری مجدد" disabled={refreshing}>
               <RotateCw className={refreshing ? "animate-spin" : ""} aria-hidden />
             </Button>
@@ -88,7 +170,7 @@ export default function PropertiesPage() {
           <Button
             variant={activeFilters ? "soft" : "secondary"}
             size="icon"
-            className="relative md:hidden"
+            className="relative"
             onClick={() => setShowFilters((s) => !s)}
             aria-expanded={showFilters}
             aria-label="فیلترها"
@@ -101,7 +183,17 @@ export default function PropertiesPage() {
             )}
           </Button>
         </div>
-        <div className={showFilters ? "grid grid-cols-1 gap-2 sm:grid-cols-3" : "hidden gap-2 md:grid md:grid-cols-3"}>{filters}</div>
+        <div className={showFilters ? "grid grid-cols-2 gap-2 md:grid-cols-4" : "hidden"}>{filters}</div>
+        {activeFilters > 0 && (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={clearFilters}>
+              <X aria-hidden /> پاک کردن فیلترها
+            </Button>
+            <Button size="sm" variant="soft" onClick={() => setSavedOpen(true)}>
+              <Bookmark aria-hidden /> ذخیره این جستجو
+            </Button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -139,9 +231,16 @@ export default function PropertiesPage() {
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent title="ثبت ملک جدید" description="کد اختصاصی AB-… پس از ثبت ساخته می‌شود" size="lg">
-          <PropertyForm onDone={() => setCreateOpen(false)} />
+          <PropertyForm
+            onDone={(created) => {
+              setCreateOpen(false);
+              if (created) setDetail({ id: created.id, suggest: false });
+            }}
+          />
         </DialogContent>
       </Dialog>
+
+      <SavedSearchesDialog open={savedOpen} onOpenChange={setSavedOpen} current={query} onApply={applyQuery} />
 
       <PropertyDetailDialog
         propertyId={detail?.id ?? null}

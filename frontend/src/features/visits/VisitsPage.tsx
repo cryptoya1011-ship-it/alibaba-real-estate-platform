@@ -3,13 +3,13 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { BellRing, Building2, CalendarClock, Clock, Plus, RotateCw, UserRound } from "lucide-react";
-import { api } from "@/api";
+import { BellRing, Building2, CalendarClock, Check, Clock, MoreVertical, Plus, RotateCw, StickyNote, Trash2, UserRound } from "lucide-react";
+import { api, ApiError } from "@/api";
 import { invalidate, useApi } from "@/hooks/useApi";
 import { useCreateParam } from "@/hooks/useCreateParam";
 import { useLookups } from "@/hooks/useLookups";
 import type { Person, PropertyListItem, Visit } from "@/lib/types";
-import { VISIT_STATUSES } from "@/lib/constants";
+import { VISIT_STATUSES, VISIT_STATUS_OPTIONS } from "@/lib/constants";
 import { faNum, formatTime, formatWeekdayDate, todayISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,9 @@ import { PageHeader, StaggerItem, StaggerList } from "@/components/ui/misc";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState, errorMessage } from "@/components/ui/states";
 import { Fab } from "@/components/ui/fab";
+import { useConfirm } from "@/components/ui/confirm";
+import { DropdownContent, DropdownItem, DropdownLabel, DropdownMenu, DropdownSeparator, DropdownTrigger } from "@/components/ui/dropdown";
+import { useCan } from "@/hooks/useSession";
 
 type Filter = "all" | "today" | "upcoming" | "past";
 
@@ -30,6 +33,44 @@ export default function VisitsPage() {
   const { data, error, loading, reload, refreshing } = useApi(() => api.listVisits({ limit: 100 }), [], { keys: ["visits"] });
   const lookups = useLookups();
   const today = todayISO();
+  const confirm = useConfirm();
+  const can = useCan();
+  const canUpdate = can("visit:update");
+  const canDelete = can("visit:delete");
+  const [busy, setBusy] = useState<number | null>(null);
+
+  const changeStatus = async (v: Visit, status: string) => {
+    if (status === v.status) return;
+    setBusy(v.id);
+    try {
+      const version = v.version ?? (await api.getVisit(v.id)).version ?? 1;
+      await api.patchVisit(v.id, { status, version });
+      toast.success(`وضعیت بازدید: ${VISIT_STATUSES[status]?.label ?? status}`);
+      invalidate("visits", "dashboard");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "VERSION_CONFLICT") {
+        toast.warning("این بازدید هم‌زمان تغییر کرده بود؛ فهرست تازه شد");
+        void reload();
+      } else toast.error(errorMessage(err, "تغییر وضعیت ناموفق بود"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async (v: Visit) => {
+    const yes = await confirm({ title: "حذف بازدید؟", description: "این بازدید از برنامه حذف می‌شود.", confirmLabel: "حذف", destructive: true });
+    if (!yes) return;
+    setBusy(v.id);
+    try {
+      await api.deleteVisit(v.id);
+      toast.success("بازدید حذف شد");
+      invalidate("visits", "dashboard");
+    } catch (err) {
+      toast.error(errorMessage(err, "حذف ناموفق بود"));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const counts = useMemo(() => {
     const list = data ?? [];
@@ -97,7 +138,15 @@ export default function VisitsPage() {
         <StaggerList className="grid gap-2.5 md:grid-cols-2">
           {visible.map((v) => (
             <StaggerItem key={v.id}>
-              <VisitCard visit={v} property={lookups.propMap.get(v.property_id)} person={lookups.personMap.get(v.customer_id)} isToday={v.visit_date === today} />
+              <VisitCard
+                visit={v}
+                property={lookups.propMap.get(v.property_id)}
+                person={lookups.personMap.get(v.customer_id)}
+                isToday={v.visit_date === today}
+                busy={busy === v.id}
+                onStatus={canUpdate ? (st) => void changeStatus(v, st) : undefined}
+                onDelete={canDelete ? () => void remove(v) : undefined}
+              />
             </StaggerItem>
           ))}
         </StaggerList>
@@ -113,7 +162,23 @@ export default function VisitsPage() {
   );
 }
 
-function VisitCard({ visit, property, person, isToday }: { visit: Visit; property?: PropertyListItem; person?: Person; isToday: boolean }) {
+function VisitCard({
+  visit,
+  property,
+  person,
+  isToday,
+  busy,
+  onStatus,
+  onDelete,
+}: {
+  visit: Visit;
+  property?: PropertyListItem;
+  person?: Person;
+  isToday: boolean;
+  busy?: boolean;
+  onStatus?: (status: string) => void;
+  onDelete?: () => void;
+}) {
   const status = VISIT_STATUSES[visit.status] ?? { label: visit.status, tone: "neutral" as const };
   const date = new Date(`${visit.visit_date}T00:00:00`);
   const day = new Intl.DateTimeFormat("fa-IR", { day: "numeric" }).format(date);
@@ -142,7 +207,40 @@ function VisitCard({ visit, property, person, isToday }: { visit: Visit; propert
           {visit.visit_time ? ` · ساعت ${formatTime(visit.visit_time)}` : ""}
           {isToday && <Badge tone="primary" className="ms-1">امروز</Badge>}
         </p>
+        {visit.notes && (
+          <p className="flex items-start gap-1.5 text-caption text-muted-foreground">
+            <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span className="line-clamp-2">{visit.notes}</span>
+          </p>
+        )}
       </div>
+      {(onStatus || onDelete) && (
+        <DropdownMenu dir="rtl">
+          <DropdownTrigger asChild>
+            <Button variant="ghost" size="icon-sm" className="-me-1 shrink-0 self-start" aria-label="گزینه‌های بازدید" loading={busy}>
+              {!busy && <MoreVertical aria-hidden />}
+            </Button>
+          </DropdownTrigger>
+          <DropdownContent>
+            {onStatus && (
+              <>
+                <DropdownLabel>تغییر وضعیت</DropdownLabel>
+                {VISIT_STATUS_OPTIONS.map((o) => (
+                  <DropdownItem key={o.value} onSelect={() => onStatus(o.value)} disabled={o.value === visit.status}>
+                    {o.value === visit.status ? <Check /> : <span className="size-4" aria-hidden />} {o.label}
+                  </DropdownItem>
+                ))}
+              </>
+            )}
+            {onStatus && onDelete && <DropdownSeparator />}
+            {onDelete && (
+              <DropdownItem destructive onSelect={onDelete}>
+                <Trash2 /> حذف بازدید
+              </DropdownItem>
+            )}
+          </DropdownContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }

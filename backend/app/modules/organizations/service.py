@@ -15,6 +15,7 @@ from app.modules.organizations.repository import (
 )
 from app.modules.organizations.schemas import (
     BranchCreate,
+    BranchUpdate,
     OrganizationCreate,
     OrganizationUpdate,
 )
@@ -102,6 +103,19 @@ class OrganizationService:
         return await self.branches.create(
             name=payload.name, code=payload.code, address=payload.address, is_main=payload.is_main
         )
+
+    async def update_branch(self, branch_id: int, payload: BranchUpdate) -> Branch:
+        ctx = current_context()
+        if not ctx.has_permission(perm.BRANCH_MANAGE):
+            raise ForbiddenError()
+        branch = await self.branches.get_or_404(branch_id)
+        values = payload.model_dump(exclude_unset=True, exclude={"version"})
+        if values.get("is_main"):
+            others, _ = await self.branches.list(limit=500, offset=0, order_by="id")
+            for other in others:
+                if other.id != branch.id and other.is_main:
+                    other.is_main = False
+        return await self.branches.update(branch, expected_version=payload.version, **values)
 
     async def list_branches(self, *, limit: int, offset: int):
         ctx = current_context()

@@ -44,6 +44,14 @@ class BranchCreate(BaseModel):
     is_main: bool = False
 
 
+class BranchUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    address: str | None = Field(default=None, max_length=500)
+    is_main: bool | None = None
+    is_active: bool | None = None
+    version: int = Field(ge=1)
+
+
 class BranchOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

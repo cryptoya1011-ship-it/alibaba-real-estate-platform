@@ -1,12 +1,13 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { KeyRound, MailPlus, Plus, RotateCw, Send, ShieldAlert, Ticket, UserPlus, XCircle } from "lucide-react";
+import { Building, KeyRound, MailPlus, Plus, RotateCw, Send, Settings2, ShieldAlert, Ticket, UserPlus, Users, XCircle } from "lucide-react";
 import { api } from "@/api";
 import { invalidate, useApi } from "@/hooks/useApi";
-import { useOrgSession } from "@/hooks/useSession";
+import { useCan, useOrgSession } from "@/hooks/useSession";
 import { useCreateParam } from "@/hooks/useCreateParam";
 import type { Invitation } from "@/lib/types";
 import { INVITATION_STATUS, roleLabel } from "@/lib/constants";
@@ -22,6 +23,12 @@ import { RowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState, errorMessage } from "@/components/ui/states";
 import { Fab } from "@/components/ui/fab";
 import { useConfirm } from "@/components/ui/confirm";
+import { Segmented, TabPanel } from "@/components/ui/tabs";
+import { MembersPanel } from "./MembersPanel";
+import { BranchesPanel } from "./BranchesPanel";
+import { OrgSettingsPanel } from "./OrgSettingsPanel";
+
+type TeamTab = "members" | "invites" | "branches" | "settings";
 
 export default function TeamPage() {
   const { orgId, currentOrg } = useOrgSession();
@@ -31,6 +38,23 @@ export default function TeamPage() {
   const roles = useApi(() => api.listRoles(orgId), [orgId], { keys: ["roles"] });
   const confirm = useConfirm();
   const [revoking, setRevoking] = useState<number | null>(null);
+
+  const can = useCan();
+  const [params, setParams] = useSearchParams();
+  const tabs: { value: TeamTab; label: string; icon: JSX.Element; show: boolean }[] = [
+    { value: "members", label: "اعضا", icon: <Users aria-hidden />, show: can("organization:member:read") },
+    { value: "invites", label: "دعوت‌نامه‌ها", icon: <MailPlus aria-hidden />, show: true },
+    { value: "branches", label: "شعب", icon: <Building aria-hidden />, show: can("branch:read") },
+    { value: "settings", label: "تنظیمات", icon: <Settings2 aria-hidden />, show: can("organization:read") },
+  ];
+  const visibleTabs = tabs.filter((t) => t.show);
+  const requested = params.get("tab") as TeamTab | null;
+  const tab: TeamTab = visibleTabs.some((t) => t.value === requested) ? (requested as TeamTab) : (visibleTabs[0]?.value ?? "invites");
+  const setTab = (t: TeamTab) => {
+    const next = new URLSearchParams(params);
+    next.set("tab", t);
+    setParams(next, { replace: true });
+  };
 
   const roleTitle = (code: string) => roles.data?.find((r) => r.code === code)?.title ?? roleLabel(code);
 
@@ -58,8 +82,8 @@ export default function TeamPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         icon={UserPlus}
-        title="تیم و دعوت"
-        description={currentOrg ? `اعضای «${currentOrg.name}» را با دعوت‌نامه اضافه کنید` : "دعوت اعضای جدید"}
+        title="تیم و سازمان"
+        description={currentOrg ? `اعضا، دعوت‌نامه‌ها، شعب و تنظیمات «${currentOrg.name}»` : "مدیریت تیم"}
         actions={
           <>
             <Button variant="ghost" size="icon" onClick={invites.reload} aria-label="بارگذاری مجدد" disabled={invites.refreshing}>
@@ -72,6 +96,19 @@ export default function TeamPage() {
         }
       />
 
+      <Segmented aria-label="بخش‌های تیم" items={visibleTabs.map(({ value, label, icon }) => ({ value, label, icon }))} value={tab} onChange={setTab} />
+
+      <TabPanel when={tab} value="members">
+        <MembersPanel />
+      </TabPanel>
+      <TabPanel when={tab} value="branches">
+        <BranchesPanel />
+      </TabPanel>
+      <TabPanel when={tab} value="settings">
+        <OrgSettingsPanel />
+      </TabPanel>
+
+      <TabPanel when={tab} value="invites">
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <section className="flex flex-col gap-3" aria-labelledby="invites-title">
           <SectionTitle>
@@ -132,8 +169,9 @@ export default function TeamPage() {
 
         <AcceptCard />
       </div>
+      </TabPanel>
 
-      <Fab label="دعوت عضو" onClick={() => setCreateOpen(true)} />
+      {tab === "invites" && <Fab label="دعوت عضو" onClick={() => setCreateOpen(true)} />}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent title="دعوت عضو جدید" description="یک توکن یک‌بار مصرف ساخته می‌شود">

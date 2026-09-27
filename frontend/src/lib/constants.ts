@@ -55,6 +55,14 @@ export const CITIES: { code: string; name: string }[] = [
 
 export const DISTRICTS: { code: string; name: string; city: string }[] = [
   { code: "MJ", name: "مرداویج", city: "ISF" },
+  { code: "CB", name: "چهارباغ", city: "ISF" },
+  { code: "JLF", name: "جلفا", city: "ISF" },
+  { code: "NZR", name: "نظر", city: "ISF" },
+  { code: "HZJ", name: "هزارجریب", city: "ISF" },
+  { code: "SPH", name: "سپاهان‌شهر", city: "ISF" },
+  { code: "BZR", name: "بزرگمهر", city: "ISF" },
+  { code: "KHK", name: "خاقانی", city: "ISF" },
+  { code: "AMD", name: "آمادگاه", city: "ISF" },
   { code: "SHG", name: "شهرک غرب", city: "THR" },
   { code: "SAD", name: "سعادت‌آباد", city: "THR" },
   { code: "VAL", name: "ولیعصر", city: "THR" },
@@ -107,7 +115,14 @@ export const VISIT_STATUSES: Record<string, { label: string; tone: Tone }> = {
   done: { label: "انجام‌شده", tone: "success" },
   cancelled: { label: "لغوشده", tone: "danger" },
   no_show: { label: "عدم حضور", tone: "warning" },
+  rescheduled: { label: "زمان‌بندی مجدد", tone: "accent" },
 };
+
+/** Statuses accepted by the backend (visits/service.py VALID_STATUSES). */
+export const VISIT_STATUS_OPTIONS = ["scheduled", "done", "rescheduled", "no_show", "cancelled"].map((value) => ({
+  value,
+  label: VISIT_STATUSES[value].label,
+}));
 
 export const PROPERTY_STATUS_TONE: Record<string, Tone> = {
   draft: "neutral",
@@ -278,3 +293,12 @@ export const roleLabel = (code: string) => SYSTEM_ROLE_LABELS[code] ?? code;
 export const cityName = (code: string | null | undefined) => CITIES.find((c) => c.code === code)?.name ?? code ?? "—";
 export const districtName = (code: string | null | undefined) =>
   DISTRICTS.find((d) => d.code === code)?.name ?? code ?? "—";
+
+/** Customer request lifecycle (free-form on the backend; these are the values the UI writes). */
+export const REQUEST_STATUSES: Record<string, { label: string; tone: Tone }> = {
+  active: { label: "فعال", tone: "success" },
+  paused: { label: "متوقف", tone: "warning" },
+  closed: { label: "بسته‌شده", tone: "neutral" },
+};
+export const requestStatus = (v: string | null | undefined) =>
+  (v && REQUEST_STATUSES[v]) || { label: v ?? "—", tone: "neutral" as Tone };

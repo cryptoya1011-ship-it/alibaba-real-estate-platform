@@ -19,6 +19,10 @@ services:
     environment:
       # Used for t.me/<bot>?start=... deep links.
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      # Property photos are written here; the named volume keeps them across rebuilds.
+      MEDIA_ROOT: /app/media
+    volumes:
+      - media_data:/app/media
 
   caddy:
     image: caddy:2-alpine
@@ -39,6 +43,8 @@ services:
       - arep_net
 
 volumes:
+  media_data:
+    driver: local
   caddy_data:
     driver: local
   caddy_config:

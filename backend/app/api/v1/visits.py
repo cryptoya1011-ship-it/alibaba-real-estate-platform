@@ -72,6 +72,8 @@ async def list_visits(
             "visit_time": v.visit_time,
             "status": v.status,
             "notes": v.notes,
+            "result": v.result,
+            "version": v.version,
             "created_at": v.created_at,
         }
         for v in items

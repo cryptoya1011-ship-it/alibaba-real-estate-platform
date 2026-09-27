@@ -142,6 +142,36 @@ docker compose exec -T db pg_dump -U arep arep | gzip > backup-$(date +%F).sql.g
 gunzip -c backup-YYYY-MM-DD.sql.gz | docker compose exec -T db psql -U arep arep
 ```
 
+## پشتیبان‌گیری از عکس‌های املاک
+
+عکس‌هایی که کاربران برای املاک بارگذاری می‌کنند **داخل پایگاه داده نیستند**. این فایل‌ها در
+حجم (volume) داکری `media_data` ذخیره می‌شوند که لایهٔ `deploy/docker-compose.https.yml` آن را در
+مسیر `/app/media` کانتینر backend سوار می‌کند. پس برای یک پشتیبان کامل، **هم پایگاه داده و هم
+این پوشه** را نگه دارید. اگر فقط از پایگاه داده پشتیبان بگیرید، رکورد عکس‌ها برمی‌گردد اما خود
+فایل‌ها از دست می‌روند.
+
+```bash
+# گرفتن پشتیبان از عکس‌ها (کنار فایل SQL بالا نگه دارید)
+docker compose exec -T backend tar -czf - -C /app/media . > media-$(date +%F).tar.gz
+```
+
+بازگردانی:
+
+```bash
+docker compose exec -T backend sh -c 'mkdir -p /app/media && tar -xzf - -C /app/media' < media-YYYY-MM-DD.tar.gz
+```
+
+نکته‌ها:
+
+- دستور `docker compose down -v` حجم‌ها را پاک می‌کند و **همهٔ عکس‌ها از بین می‌روند**. برای
+  خاموش کردن معمولی فقط `docker compose down` بزنید (بدون `-v`).
+- هر ملک حداکثر ۲۰ عکس دارد و هر فایل حداکثر ۱۵ مگابایت است. سرور عکس‌ها را کوچک می‌کند (ضلع
+  بزرگ حداکثر ۱۹۲۰ پیکسل، همراه با یک نسخهٔ کوچک ۴۸۰ پیکسلی)، پس فضای واقعی کمتر است. با
+  `docker system df -v` می‌توانید حجم `media_data` را ببینید.
+- برای پشتیبان خودکار روزانه، هر دو دستور را در یک اسکریپت بگذارید و با `crontab -e` زمان‌بندی
+  کنید. برای مثال این خط هر شب ساعت ۳ اجرا می‌شود:
+  `0 3 * * * cd ~/arep && ./backup.sh`
+
 ## عیب‌یابی
 
 | مشکل | راه‌حل |

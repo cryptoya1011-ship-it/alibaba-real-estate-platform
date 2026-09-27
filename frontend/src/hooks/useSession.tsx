@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ApiError, api, onUnauthorized, setToken, type Session } from "@/api";
+import { ApiError, api, onUnauthorized, setReauthHandler, setToken, type Session } from "@/api";
 import { getWebApp, isInsideTelegram } from "@/telegram";
 import { uid } from "@/lib/format";
 
@@ -91,6 +91,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [clear],
   );
 
+  // Silent re-login when the token stops being valid (permissions changed,
+  // invitation accepted, super-admin toggled, token expired…). The API layer
+  // retries the failed request once with the new token; only if this fails is
+  // the user sent back to the login screen.
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  useEffect(() => {
+    setReauthHandler(async () => {
+      const previous = sessionRef.current;
+      if (!previous) return false;
+      const orgId = previous.organization_id ?? undefined;
+      const tg = getWebApp();
+      let next: Session;
+      if (isInsideTelegram() && tg?.initData) {
+        try {
+          next = await api.loginTelegram(tg.initData, orgId);
+        } catch {
+          // Membership may have been removed — log in without an organization.
+          next = await api.loginTelegram(tg.initData);
+        }
+      } else {
+        next = await api.devLogin(1000001);
+        if (orgId && next.organization_id !== orgId && next.organizations.some((o) => o.id === orgId)) {
+          setToken(next.access_token);
+          next = await api.selectOrganization(orgId);
+        }
+      }
+      if (previous.user.id !== next.user.id) return false;
+      apply(next);
+      return true;
+    });
+    return () => setReauthHandler(null);
+  }, [apply]);
+
   const login = useCallback(async () => {
     setStatus("loading");
     try {
@@ -162,3 +196,10 @@ export function useOrgSession() {
 }
 
 export { ApiError };
+
+/** Permission check that also treats super admins as allowed. */
+export function useCan() {
+  const { hasPermission, session } = useSession();
+  const superAdmin = !!session?.user.is_super_admin;
+  return useCallback((code: string) => superAdmin || hasPermission(code), [superAdmin, hasPermission]);
+}

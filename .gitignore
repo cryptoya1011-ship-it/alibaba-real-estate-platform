@@ -31,3 +31,6 @@ dist/
 .DS_Store
 *.log
 *.tsbuildinfo
+
+# --- uploaded property photos (local dev) ---
+backend/media/

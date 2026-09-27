@@ -37,6 +37,14 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "*"
 
+    # Property media (photos). Files live on local disk under MEDIA_ROOT and are
+    # served read-only at {API_V1_PREFIX}/media/{file_path}.
+    MEDIA_ROOT: str = "./media"
+    MEDIA_MAX_UPLOAD_MB: int = 15
+    MEDIA_MAX_PER_PROPERTY: int = 20
+    MEDIA_MAX_DIMENSION: int = 1920
+    MEDIA_THUMB_DIMENSION: int = 480
+
     # AI Provider: mock, openai, gemini, claude, local
     AI_PROVIDER: str = "mock"
     OPENAI_API_KEY: str | None = None

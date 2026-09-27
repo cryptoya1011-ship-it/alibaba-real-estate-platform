@@ -41,13 +41,38 @@ export function EmptyState({
   );
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  title: "عنوان",
+  price: "قیمت",
+  rent_price: "اجاره",
+  deposit: "ودیعه",
+  built_area: "متراژ بنا",
+  land_area: "متراژ زمین",
+  owner_share: "سهم مالک",
+  builder_share: "سهم سازنده",
+  owner_phone: "تلفن مالک",
+  phone: "تلفن",
+  first_name: "نام",
+  city_code: "کد شهر",
+  district_code: "کد منطقه",
+  name: "نام",
+  slug: "شناسه",
+  code: "کد",
+  file: "فایل",
+};
+
 export function errorMessage(err: unknown, fallback = "خطایی رخ داد"): string {
   if (err instanceof ApiError) {
-    if (err.status === 403 || err.code === "FORBIDDEN") return "برای این بخش دسترسی ندارید";
+    if (err.status === 403 || err.code === "FORBIDDEN") {
+      // Prefer the server's specific reason (e.g. "owner cannot be changed").
+      return err.message && err.message !== "دسترسی لازم را ندارید" ? err.message : "برای این بخش دسترسی ندارید";
+    }
     if (err.code === "NETWORK_ERROR") return "اتصال به سرور برقرار نشد؛ اینترنت یا سرور را بررسی کنید";
     if (err.code === "VALIDATION_ERROR" && err.details.length > 0) {
       const first = err.details[0] as { field?: string; message?: string };
-      return `${err.message}${first?.field ? ` (${first.field})` : ""}`;
+      const key = first?.field?.split(".").pop() ?? "";
+      const label = FIELD_LABELS[key];
+      return `${err.message}${label ? ` (${label})` : ""}`;
     }
     return err.message;
   }

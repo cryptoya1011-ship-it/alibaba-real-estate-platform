@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { ArrowLeft, Building2, Check, Handshake, History, Plus, RotateCw, UserRound, XCircle } from "lucide-react";
+import { ArrowLeft, Building2, Check, Handshake, History, Plus, RotateCw, Trash2, UserRound, XCircle } from "lucide-react";
+import { useCan } from "@/hooks/useSession";
 import { api, ApiError } from "@/api";
 import { invalidate, useApi } from "@/hooks/useApi";
 import { useCreateParam } from "@/hooks/useCreateParam";
@@ -184,6 +185,10 @@ export default function DealsPage() {
             personName={(id) => lookups.personMap.get(id)?.display_name}
             propertyTitle={(id) => lookups.propMap.get(id)?.title}
             onChanged={reload}
+            onDeleted={() => {
+              closeDetail();
+              void reload();
+            }}
           />
         )}
       </Dialog>
@@ -254,11 +259,13 @@ function DealDetail({
   personName,
   propertyTitle,
   onChanged,
+  onDeleted,
 }: {
   dealId: number;
   personName: (id: number) => string | undefined;
   propertyTitle: (id: number) => string | undefined;
   onChanged: () => void;
+  onDeleted: () => void;
 }) {
   const deal = useApi(() => api.getDeal(dealId), [dealId]);
   const history = useApi(() => api.getDealHistory(dealId), [dealId]);
@@ -291,6 +298,25 @@ function DealDetail({
       }
     } finally {
       setBusy(null);
+    }
+  };
+
+  const can = useCan();
+  const [deleting, setDeleting] = useState(false);
+  const remove = async () => {
+    const ok = await confirm({ title: "حذف معامله؟", description: "معامله و تاریخچه آن از فهرست حذف می‌شود.", confirmLabel: "حذف", destructive: true });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const fresh = await api.getDeal(dealId);
+      await api.deleteDeal(dealId, fresh.version ?? undefined);
+      toast.success("معامله حذف شد");
+      invalidate("deals", "dashboard");
+      onDeleted();
+    } catch (err) {
+      toast.error(errorMessage(err, "حذف معامله ناموفق بود"));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -404,6 +430,11 @@ function DealDetail({
               />
             )}
           </div>
+          {can("deal:delete") && (
+            <Button variant="ghost" size="sm" className="self-start text-danger" onClick={remove} loading={deleting}>
+              <Trash2 aria-hidden /> حذف معامله
+            </Button>
+          )}
         </div>
       )}
     </DialogContent>

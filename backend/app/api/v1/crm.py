@@ -216,7 +216,13 @@ async def list_requests(
             "city_code": r.city_code,
             "budget_min": r.budget_min,
             "budget_max": r.budget_max,
+            "district_code": r.district_code,
+            "area_min": r.area_min,
+            "area_max": r.area_max,
+            "rooms": r.rooms,
+            "special_requirements": r.special_requirements,
             "status": r.status,
+            "version": r.version,
             "created_at": r.created_at,
         }
         for r in items
@@ -262,6 +268,20 @@ async def update_request(
     service = CustomerRequestService(session)
     r = await service.update(request_id, payload)
     return ok({"id": r.id, "status": r.status, "version": r.version})
+
+
+@requests_router.delete("/{request_id}", dependencies=[Depends(require_permission(perm.CUSTOMER_REQUEST_UPDATE))])
+async def delete_request(
+    request_id: int,
+    ctx: TenantContext = Depends(get_tenant_context),
+    session: AsyncSession = Depends(get_db),
+    version: int | None = Query(default=None),
+) -> dict:
+    """حذف نرم درخواست مشتری"""
+    service = CustomerRequestService(session)
+    r = await service.get_by_id(request_id)
+    await service.requests.soft_delete(r, expected_version=version)
+    return ok({"id": request_id, "deleted": True})
 
 
 # --- Favorites ---
@@ -327,7 +347,10 @@ async def list_saved_searches(
 ) -> dict:
     service = SavedSearchService(session)
     items, total = await service.list(ctx.user_id, limit=pag.limit, offset=pag.offset)
-    data = [{"id": s.id, "name": s.name, "query_json": s.query_json, "is_active": s.is_active} for s in items]
+    data = [
+        {"id": s.id, "name": s.name, "query_json": s.query_json, "is_active": s.is_active, "version": s.version}
+        for s in items
+    ]
     return ok(data, page_meta(total=total, limit=pag.limit, offset=pag.offset))
 
 

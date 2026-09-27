@@ -108,7 +108,11 @@ class Property(Base, TenantEntity):
         "PropertyLocation", back_populates="property", cascade="all, delete-orphan", uselist=False, lazy="selectin"
     )
     media: Mapped[list[PropertyMedia]] = relationship(
-        "PropertyMedia", back_populates="property", cascade="all, delete-orphan", lazy="selectin"
+        "PropertyMedia",
+        back_populates="property",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="[PropertyMedia.sort_order, PropertyMedia.id]",
     )
 
 

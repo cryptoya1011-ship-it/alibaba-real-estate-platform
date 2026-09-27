@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -18,9 +18,11 @@ import {
   SearchX,
   X,
   ArrowUpDown,
+  CalendarDays,
+  Repeat,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { api, ApiError } from "@/api";
+import { api, ApiError, mediaUrl } from "@/api";
 import { useApi } from "@/hooks/useApi";
 import { useSession } from "@/hooks/useSession";
 import type { PublicProperty } from "@/lib/types";
@@ -34,7 +36,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { Brand } from "@/components/layout/Brand";
 import { ThemeToggle } from "@/components/layout/TopbarActions";
-import { PropertyVisual } from "@/features/properties/PropertyVisual";
+import { PropertyGallery } from "@/features/properties/PropertyGallery";
+import { AMENITIES, typeConfig } from "@/features/properties/propertyConfig";
 import { publicUrl } from "@/features/properties/PropertyCard";
 
 const DEFAULT_TITLE = document.title;
@@ -53,7 +56,8 @@ function useSeo(p: PublicProperty | undefined) {
     setMeta('meta[name="description"]', desc);
     setMeta('meta[property="og:title"]', p.title);
     setMeta('meta[property="og:description"]', desc);
-    if (p.primary_image) setMeta('meta[property="og:image"]', p.primary_image);
+    const image = mediaUrl(p.primary_image, "full");
+    if (image) setMeta('meta[property="og:image"]', new URL(image, window.location.origin).href);
     return () => {
       document.title = DEFAULT_TITLE;
     };
@@ -127,8 +131,8 @@ export default function PublicPropertyPage() {
 }
 
 function PropertyView({ p }: { p: PublicProperty }) {
-  const images = p.images.length ? p.images : p.primary_image ? [p.primary_image] : [];
-  const [active, setActive] = useState(0);
+  const cover = p.primary_image ?? null;
+  const images = cover ? [cover, ...p.images.filter((k) => k !== cover)] : p.images;
   const isRent = p.transaction_type === "rent";
   const hasCoords = typeof p.public_lat === "number" && typeof p.public_lng === "number";
   const url = publicUrl(p.code);
@@ -150,50 +154,47 @@ function PropertyView({ p }: { p: PublicProperty }) {
   if (p.land_area) facts.push({ icon: Fence, label: "متراژ زمین", value: `${faNum(p.land_area)} متر` });
   if (p.rooms ?? p.bedrooms) facts.push({ icon: BedDouble, label: "اتاق", value: faNum(p.rooms ?? p.bedrooms) });
   if (p.bathrooms) facts.push({ icon: Bath, label: "سرویس", value: faNum(p.bathrooms) });
+  if (p.useful_area) facts.push({ icon: Ruler, label: "متراژ مفید", value: `${faNum(p.useful_area)} متر` });
+  if (p.year_built) facts.push({ icon: CalendarDays, label: "سال ساخت", value: faNum(String(p.year_built)) });
   if (p.floor_number !== null && p.floor_number !== undefined)
     facts.push({ icon: Layers, label: "طبقه", value: p.total_floors ? `${faNum(p.floor_number)} از ${faNum(p.total_floors)}` : faNum(p.floor_number) });
 
+  const core = typeConfig(p.property_type).core;
   const amenities: { icon: LucideIcon; label: string; on: boolean | undefined }[] = [
-    { icon: Car, label: "پارکینگ", on: p.has_parking },
-    { icon: ArrowUpDown, label: "آسانسور", on: p.has_elevator },
-    { icon: Package, label: "انباری", on: p.has_warehouse },
-    { icon: Building, label: "بالکن", on: p.has_balcony },
-  ];
+    { key: "has_parking", icon: Car, label: "پارکینگ", on: p.has_parking },
+    { key: "has_elevator", icon: ArrowUpDown, label: "آسانسور", on: p.has_elevator },
+    { key: "has_warehouse", icon: Package, label: "انباری", on: p.has_warehouse },
+    { key: "has_balcony", icon: Building, label: "بالکن", on: p.has_balcony },
+  ]
+    .filter((a) => a.on || core.includes(a.key as (typeof core)[number]))
+    .map(({ icon, label, on }) => ({ icon, label, on }));
+  (p.amenities ?? []).forEach((key) => {
+    const known = AMENITIES.find((a) => a.key === key);
+    if (known) amenities.push({ icon: known.icon, label: known.label, on: true });
+  });
+  if (p.is_exchangeable) amenities.push({ icon: Repeat, label: "قابل معاوضه", on: true });
 
   return (
     <motion.article initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="flex flex-col gap-6">
       {/* Gallery */}
-      <section aria-label="تصاویر ملک" className="flex flex-col gap-2">
-        <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] hairline md:aspect-[21/9]">
-          <PropertyVisual image={images[active]} type={p.property_type} seed={p.id} alt={p.title} />
-          <div className="absolute start-3 top-3 flex gap-1.5">
-            <Badge tone="primary" className="bg-card/85 backdrop-blur">
-              {propertyTypeLabel(p.property_type)}
-            </Badge>
-            <Badge tone="accent" className="bg-card/85 backdrop-blur">
-              {transactionLabel(p.transaction_type)}
-            </Badge>
-          </div>
-          {images.length === 0 && (
-            <span className="absolute bottom-3 start-3 rounded-full bg-black/45 px-3 py-1 text-caption text-white backdrop-blur">تصویری بارگذاری نشده</span>
-          )}
-        </div>
-        {images.length > 1 && (
-          <div className="scrollbar-none flex gap-2 overflow-x-auto">
-            {images.map((src, i) => (
-              <button
-                key={src}
-                type="button"
-                onClick={() => setActive(i)}
-                aria-label={`تصویر ${faNum(i + 1)}`}
-                aria-pressed={i === active}
-                className={cn("h-16 w-24 shrink-0 overflow-hidden rounded-[12px] ring-2 transition", i === active ? "ring-primary" : "ring-transparent opacity-70 hover:opacity-100")}
-              >
-                <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
-              </button>
-            ))}
-          </div>
-        )}
+      <section aria-label="تصاویر ملک">
+        <PropertyGallery
+          images={images}
+          type={p.property_type}
+          seed={p.id}
+          alt={p.title}
+          className="aspect-[16/10] rounded-[20px] hairline md:aspect-[21/9]"
+          overlay={
+            <div className="pointer-events-none absolute start-3 top-3 flex gap-1.5">
+              <Badge tone="primary" className="bg-card/85 backdrop-blur">
+                {propertyTypeLabel(p.property_type)}
+              </Badge>
+              <Badge tone="accent" className="bg-card/85 backdrop-blur">
+                {transactionLabel(p.transaction_type)}
+              </Badge>
+            </div>
+          }
+        />
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
@@ -220,6 +221,7 @@ function PropertyView({ p }: { p: PublicProperty }) {
             </section>
           )}
 
+          {amenities.length > 0 && (
           <section aria-labelledby="amenities" className="flex flex-col gap-3">
             <h2 id="amenities" className="text-title font-semibold">
               امکانات
@@ -237,6 +239,7 @@ function PropertyView({ p }: { p: PublicProperty }) {
               ))}
             </ul>
           </section>
+          )}
 
           {p.description && (
             <section aria-labelledby="desc" className="flex flex-col gap-2">

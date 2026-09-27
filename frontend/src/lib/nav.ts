@@ -35,7 +35,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "deals", to: "/app/deals", label: "معاملات", icon: Handshake, group: "main", mobilePrimary: true },
   { key: "ai", to: "/app/ai", label: "دستیار هوشمند", short: "هوش مصنوعی", icon: Sparkles, group: "smart" },
   { key: "integrations", to: "/app/integrations", label: "یکپارچه‌سازی", icon: Plug, group: "smart" },
-  { key: "team", to: "/app/team", label: "تیم و دعوت", short: "تیم", icon: UserPlus, group: "org" },
+  { key: "team", to: "/app/team", label: "تیم و سازمان", short: "تیم", icon: UserPlus, group: "org" },
   { key: "roles", to: "/app/roles", label: "نقش‌ها و دسترسی", short: "نقش‌ها", icon: ShieldCheck, group: "org" },
   { key: "public", to: "/app/public", label: "ویترین عمومی", short: "عمومی", icon: Globe, group: "other" },
   { key: "favorites", to: "/app/favorites", label: "علاقه‌مندی‌ها", icon: Star, group: "other" },

@@ -1,5 +1,7 @@
 import { Building, Building2, Castle, Factory, Home, LandPlot, Store, Trees } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useState } from "react";
+import { mediaUrl } from "@/api";
 import { cn } from "@/lib/cn";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -29,16 +31,30 @@ export function PropertyVisual({
   seed = 0,
   className,
   alt,
+  size = "thumb",
 }: {
+  /** Media key from the API (or an absolute/blob URL). */
   image?: string | null;
   type?: string;
   seed?: number;
   className?: string;
   alt: string;
+  size?: "thumb" | "full";
 }) {
   const Icon = ICONS[type ?? ""] ?? Building2;
-  if (image) {
-    return <img src={image} alt={alt} loading="lazy" decoding="async" className={cn("h-full w-full object-cover", className)} />;
+  const src = mediaUrl(image, size);
+  const [failed, setFailed] = useState<string | null>(null);
+  if (src && failed !== src) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(src)}
+        className={cn("h-full w-full bg-card-2 object-cover", className)}
+      />
+    );
   }
   return (
     <div

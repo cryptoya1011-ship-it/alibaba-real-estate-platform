@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+import json
+
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -21,6 +23,19 @@ from app.db.session import get_db, get_db_public
 from app.modules.properties.models import Property, PropertyLocation, PropertyMedia
 
 router = APIRouter(prefix="/public", tags=["public"])
+
+
+def _public_amenities(raw: str | None) -> list[str]:
+    """Only the enabled amenity keys (booleans) are public — never free-form values."""
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    return sorted(str(k)[:40] for k, v in data.items() if v is True)[:40]
 
 
 def _public_property_to_dict(prop) -> dict[str, Any]:
@@ -77,6 +92,9 @@ def _public_property_to_dict(prop) -> dict[str, Any]:
         "has_elevator": prop.has_elevator,
         "has_warehouse": prop.has_warehouse,
         "has_balcony": prop.has_balcony,
+        "year_built": prop.year_built,
+        "is_exchangeable": prop.is_exchangeable,
+        "amenities": _public_amenities(prop.amenities_json),
         "city": city,
         "district": district,
         "city_code": city_code,

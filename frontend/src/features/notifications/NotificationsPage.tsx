@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Bell, BellOff, CalendarClock, CheckCheck, Handshake, Building2, RotateCw, Info } from "lucide-react";
+import { Bell, BellOff, CalendarClock, CheckCheck, Handshake, Building2, RotateCw, Info, Trash2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { api } from "@/api";
 import { invalidate, useApi } from "@/hooks/useApi";
@@ -46,6 +46,20 @@ export default function NotificationsPage() {
       toast.error(errorMessage(err, "علامت‌گذاری ناموفق بود"));
     } finally {
       setMarking(false);
+    }
+  };
+
+  const remove = async (n: NotificationItem) => {
+    const prev = data;
+    setData((data ?? []).filter((x) => x.id !== n.id));
+    if (!n.is_read) setUnread(Math.max(0, unread - 1));
+    try {
+      await api.deleteNotification(n.id);
+      toast.success("اعلان حذف شد");
+    } catch (err) {
+      if (prev) setData(prev);
+      refresh();
+      toast.error(errorMessage(err, "حذف اعلان ناموفق بود"));
     }
   };
 
@@ -104,14 +118,13 @@ export default function NotificationsPage() {
             const pr = NOTIFICATION_PRIORITY[n.priority];
             return (
               <StaggerItem key={n.id}>
-                <button
-                  type="button"
-                  onClick={() => open(n)}
+                <div
                   className={cn(
-                    "relative flex w-full items-start gap-3 rounded-[14px] p-3.5 text-start transition hairline",
+                    "flex items-start rounded-[14px] transition hairline",
                     n.is_read ? "bg-card hover:bg-card-2" : "border-primary/40 bg-primary-soft hover:border-primary/60",
                   )}
                 >
+                <button type="button" onClick={() => open(n)} className="relative flex min-w-0 flex-1 items-start gap-3 rounded-[14px] p-3.5 text-start">
                   <span className={cn("grid size-10 shrink-0 place-items-center rounded-[12px]", n.is_read ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground")}>
                     <Icon className="size-[18px]" aria-hidden />
                   </span>
@@ -132,6 +145,10 @@ export default function NotificationsPage() {
                     </>
                   )}
                 </button>
+                <Button variant="ghost" size="icon-sm" className="m-2 shrink-0 text-muted-foreground hover:text-danger" aria-label="حذف اعلان" onClick={() => void remove(n)}>
+                  <Trash2 aria-hidden />
+                </Button>
+                </div>
               </StaggerItem>
             );
           })}

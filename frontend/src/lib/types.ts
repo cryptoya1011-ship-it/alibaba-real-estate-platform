@@ -50,8 +50,21 @@ export type PropertyListItem = {
   city_code?: string | null;
   district_code?: string | null;
   primary_image?: string | null;
+  deposit?: number | null;
   created_at?: ISODate;
 };
+
+export type PropertyMedia = {
+  id: ID;
+  file_path: string;
+  file_name: string;
+  file_type: string;
+  mime_type: string | null;
+  is_primary: boolean;
+  sort_order: number;
+};
+
+export type RegistrantType = "owner" | "intermediary" | "agent" | "office_staff";
 
 export type PropertyLocation = {
   city: string | null;
@@ -81,6 +94,20 @@ export type PropertyDetail = PropertyListItem & {
   location?: PropertyLocation | null;
   usages?: { usage_type: string; is_primary: boolean }[];
   updated_at?: ISODate;
+  registrant_type?: RegistrantType | string;
+  useful_area?: number | null;
+  floor_area?: number | null;
+  currency?: string;
+  is_exchangeable?: boolean;
+  exchange_description?: string | null;
+  owner_share?: number | null;
+  builder_share?: number | null;
+  partnership_description?: string | null;
+  owner_person_id?: ID | null;
+  legal_info?: string | null;
+  /** JSON-encoded amenities object (backend column amenities_json). */
+  amenities_json?: string | null;
+  media?: PropertyMedia[];
 };
 
 export type PropertyCreatePayload = {
@@ -100,6 +127,25 @@ export type PropertyCreatePayload = {
   owner_phone?: string | null;
   location?: Partial<PropertyLocation>;
   usages?: { usage_type: string; is_primary: boolean }[];
+  registrant_type?: RegistrantType;
+  land_area?: number | null;
+  useful_area?: number | null;
+  floor_area?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  floor_number?: number | null;
+  total_floors?: number | null;
+  year_built?: number | null;
+  rent_price?: number | null;
+  deposit?: number | null;
+  is_exchangeable?: boolean;
+  exchange_description?: string | null;
+  owner_share?: number | null;
+  builder_share?: number | null;
+  partnership_description?: string | null;
+  owner_person_id?: ID | null;
+  amenities?: Record<string, boolean> | null;
+  legal_info?: string | null;
 };
 
 export type PropertyUpdatePayload = Partial<PropertyCreatePayload> & { version: number };
@@ -119,6 +165,9 @@ export type PublicProperty = PropertyListItem & {
   public_lng?: number | null;
   usages?: { usage_type: string; is_primary: boolean }[];
   images: string[];
+  year_built?: number | null;
+  is_exchangeable?: boolean;
+  amenities?: string[];
   updated_at?: ISODate;
 };
 
@@ -132,6 +181,8 @@ export type Person = {
   last_name: string | null;
   phone: string | null;
   email?: string | null;
+  national_id?: string | null;
+  notes?: string | null;
   display_name: string;
   roles: { role: string }[];
   version?: number;
@@ -143,6 +194,7 @@ export type PersonCreatePayload = {
   last_name?: string | null;
   phone?: string | null;
   email?: string | null;
+  national_id?: string | null;
   notes?: string | null;
   roles?: PersonRole[];
 };
@@ -157,7 +209,11 @@ export type CustomerRequest = {
   budget_min: number | null;
   budget_max: number | null;
   area_min?: number | null;
+  area_max?: number | null;
+  rooms?: number | null;
+  special_requirements?: string | null;
   status: string;
+  version?: number;
   created_at?: ISODate;
 };
 
@@ -179,7 +235,15 @@ export type CustomerRequestCreatePayload = {
 
 export type Favorite = { id: ID; property_id: ID; user_id?: ID; created_at?: ISODate };
 
-export type SavedSearch = { id: ID; name: string; query_json?: string; is_active?: boolean };
+export type SavedSearch = { id: ID; name: string; query_json?: string; is_active?: boolean; version?: number };
+export type SavedSearchMatch = {
+  id: ID;
+  code: string;
+  title: string;
+  property_type: string;
+  price: number | null;
+  city_code: string | null;
+};
 
 // ---------- Visits ----------
 export type Visit = {
@@ -193,6 +257,12 @@ export type Visit = {
   notes?: string | null;
   version?: number;
   created_at?: ISODate;
+};
+
+export type VisitUpdatePayload = Partial<VisitCreatePayload> & {
+  follow_up_notes?: string | null;
+  result?: string | null;
+  version: number;
 };
 
 export type VisitCreatePayload = {
@@ -429,4 +499,46 @@ export type IntegrationLog = {
   external_url: string | null;
   error_message: string | null;
   created_at: ISODate;
+};
+
+// ---------- Members / Branches / Organization settings ----------
+export type MemberRole = { id: ID; code: string; title: string; is_system: boolean };
+export type MemberBranch = { id: ID; name: string; code: string; is_default: boolean };
+export type Member = {
+  user_id: ID;
+  telegram_id: number | null;
+  telegram_username: string | null;
+  display_name: string;
+  phone: string | null;
+  is_owner: boolean;
+  is_active: boolean;
+  joined_at: ISODate;
+  roles: MemberRole[];
+  branches: MemberBranch[];
+};
+
+export type Branch = {
+  id: ID;
+  organization_id: ID;
+  name: string;
+  code: string;
+  address: string | null;
+  is_main: boolean;
+  is_active: boolean;
+  version: number;
+};
+export type BranchCreatePayload = { name: string; code: string; address?: string | null; is_main?: boolean };
+export type BranchUpdatePayload = {
+  name?: string;
+  address?: string | null;
+  is_main?: boolean;
+  is_active?: boolean;
+  version: number;
+};
+
+export type OrganizationUpdatePayload = { name?: string; city_code?: string | null; phone?: string | null; version: number };
+
+export type CustomerRequestUpdatePayload = Partial<Omit<CustomerRequestCreatePayload, "person_id">> & {
+  status?: string;
+  version: number;
 };
