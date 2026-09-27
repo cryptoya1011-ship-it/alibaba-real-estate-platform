@@ -57,3 +57,12 @@ async def test_super_admin_cannot_enter_nonexistent_organization(client, login, 
     # …while logging in without an organization still works.
     resp = await client.post("/api/v1/auth/telegram", json={"init_data": make_init_data(424204)})
     assert resp.status_code == 200
+
+
+async def test_token_accepted_from_x_access_token_header(client, login):
+    """Fallback for proxies that strip the Authorization header."""
+    data = await login(telegram_id=424205)
+    resp = await client.get("/api/v1/me", headers={"X-Access-Token": data["access_token"]})
+    assert resp.status_code == 200
+    resp = await client.get("/api/v1/me")
+    assert resp.status_code == 401

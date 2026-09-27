@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import get_cache, perm_cache_key
 from app.core.config import settings
+from app.core.logging import logger
 from app.core.errors import ForbiddenError, UnauthorizedError
 from app.core.security import decode_access_token
 from app.core.tenant import TenantContext, reset_context, set_context
@@ -21,11 +22,28 @@ from app.modules.rbac.service import RbacService
 from app.modules.users.repository import UserRepository
 
 
-async def get_bearer_token(authorization: str | None = Header(default=None)) -> str:
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise UnauthorizedError()
-    token = authorization.split(" ", 1)[1].strip()
+async def get_bearer_token(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    x_access_token: str | None = Header(default=None),
+) -> str:
+    """Bearer token from `Authorization`, or from `X-Access-Token` as a fallback.
+
+    Some reverse proxies / preview tunnels drop the standard Authorization header
+    on the way to the app; the client sends the same token in both headers.
+    """
+    token = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+    if not token and x_access_token:
+        token = x_access_token.strip()
     if not token:
+        # Header *names* only (never values) — to diagnose proxies stripping auth.
+        logger.warning(
+            "auth: request without token; headers=%s",
+            ",".join(sorted(request.headers.keys())),
+            extra={"path": request.url.path},
+        )
         raise UnauthorizedError()
     return token
 

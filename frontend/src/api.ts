@@ -128,7 +128,11 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
   // FormData sets its own multipart boundary; everything else is JSON.
   if (!(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
   const tokenUsed = accessToken;
-  if (tokenUsed) headers.set("Authorization", `Bearer ${tokenUsed}`);
+  if (tokenUsed) {
+    headers.set("Authorization", `Bearer ${tokenUsed}`);
+    // Same token again: some proxies/preview tunnels strip `Authorization`.
+    headers.set("X-Access-Token", tokenUsed);
+  }
 
   let response: Response;
   try {
