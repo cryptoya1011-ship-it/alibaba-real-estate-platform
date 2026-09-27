@@ -19,7 +19,7 @@ from app.api.deps import get_tenant_context
 from app.core.responses import ok
 from app.core.tenant import TenantContext
 from app.db.session import get_db
-from app.modules.ai.adapter import get_provider
+from app.modules.ai.adapter import get_provider, providers_status
 from app.modules.ai.service import AIService
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -38,23 +38,8 @@ class MatchRequest(BaseModel):
 async def list_providers(
     ctx: TenantContext = Depends(get_tenant_context),
 ) -> dict:
-    """لیست ارائه‌دهندگان AI — Core جدا از AI، قابل تعویض"""
-    import os
-
-    provider_name = (os.getenv("AI_PROVIDER") or "mock").lower()
-    return ok(
-        {
-            "current": provider_name,
-            "available": ["mock", "openai", "gemini", "claude", "local"],
-            "details": {
-                "mock": {"type": "rule-based", "requires_api_key": False, "persian": True, "description": "قانون‌محور فارسی، بدون نیاز به اینترنت، deterministic"},
-                "openai": {"type": "llm", "requires_api_key": True, "env": "OPENAI_API_KEY", "has_key": bool(os.getenv("OPENAI_API_KEY"))},
-                "gemini": {"type": "llm", "requires_api_key": True, "env": "GEMINI_API_KEY", "has_key": bool(os.getenv("GEMINI_API_KEY"))},
-                "claude": {"type": "llm", "requires_api_key": True, "env": "CLAUDE_API_KEY or ANTHROPIC_API_KEY", "has_key": bool(os.getenv("CLAUDE_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))},
-                "local": {"type": "local_llm", "requires_api_key": False, "description": "برای Termux / آفلاین، فعلاً mock"},
-            },
-        }
-    )
+    """لیست ارائه‌دهندگان AI — فقط موتورهای واقعاً پیاده‌شده فعال می‌شوند"""
+    return ok(providers_status())
 
 
 @router.post("/search/parse")

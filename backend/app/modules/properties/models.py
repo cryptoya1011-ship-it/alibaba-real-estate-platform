@@ -4,9 +4,12 @@ Core + Usage (Mixed Use) + Location + Financial + Media + Extended Attributes
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -99,6 +102,11 @@ class Property(Base, TenantEntity):
 
     # Legal
     legal_info: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Official inventory review (business rules §7) — who approved and the last review note.
+    approved_by: Mapped[int | None] = mapped_column(BigInt, nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     usages: Mapped[list[PropertyUsage]] = relationship(

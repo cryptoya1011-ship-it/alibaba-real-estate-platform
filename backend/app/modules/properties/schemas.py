@@ -25,6 +25,8 @@ TransactionType = Literal["sale", "rent", "exchange", "partnership"]
 PropertyStatus = Literal[
     "draft",
     "pending_review",
+    "changes_requested",
+    "rejected",
     "approved",
     "published",
     "reserved",
@@ -294,3 +296,15 @@ class PropertyListItem(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+PropertyReviewAction = Literal["approve", "reject", "request_changes"]
+
+
+class PropertyReview(BaseModel):
+    """Manager decision on a submitted property (business rules §7.2)."""
+
+    action: PropertyReviewAction
+    note: str | None = Field(default=None, max_length=2000)
+    publish: bool = False  # approve and publish on the public site in one step
+    version: int | None = None

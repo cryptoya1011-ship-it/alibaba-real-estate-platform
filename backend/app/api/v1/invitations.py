@@ -18,7 +18,7 @@ from app.api.deps import get_context, get_tenant_context
 from app.core.responses import ok, page_meta
 from app.core.tenant import TenantContext
 from app.db.session import get_db
-from app.modules.organizations.invitation_service import InvitationService
+from app.modules.organizations.invitation_service import InvitationService, effective_status
 
 router = APIRouter(tags=["invitations"])
 
@@ -28,6 +28,7 @@ class InvitationCreate(BaseModel):
     invited_phone: str | None = Field(default=None, description="Phone of invited user")
     role_code: str = Field(description="Role code: organization_admin, branch_admin, agent, or custom")
     branch_id: int | None = Field(default=None)
+    expires_in_days: int = Field(default=7, ge=1, le=30, description="Token lifetime in days (1–30)")
 
 
 class InvitationAccept(BaseModel):
@@ -42,7 +43,8 @@ def _inv_to_dict(inv) -> dict[str, Any]:
         "invited_telegram_id": inv.invited_telegram_id,
         "invited_phone": inv.invited_phone,
         "role_code": inv.role_code,
-        "status": inv.status,
+        "status": effective_status(inv),
+        "expires_at": inv.expires_at,
         "accepted_by_user_id": inv.accepted_by_user_id,
         "created_at": inv.created_at,
         "updated_at": inv.updated_at,
@@ -64,6 +66,7 @@ async def create_invitation(
         invited_phone=payload.invited_phone,
         role_code=payload.role_code,
         branch_id=payload.branch_id,
+        expires_in_days=payload.expires_in_days,
     )
     data = _inv_to_dict(invitation)
     data["token"] = raw_token  # Only once!

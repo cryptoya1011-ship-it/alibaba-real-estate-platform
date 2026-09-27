@@ -1,7 +1,9 @@
 """Organization / Branch / Membership: the tenancy backbone."""
 from __future__ import annotations
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, UniqueConstraint
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -89,3 +91,5 @@ class OrganizationInvitation(Base, BaseEntity):
     token_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
     accepted_by_user_id: Mapped[int | None] = mapped_column(BigInt, nullable=True)
+    # One-time token lifetime (business rules §40). NULL = legacy invitation without expiry.
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

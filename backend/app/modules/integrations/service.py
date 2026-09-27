@@ -24,6 +24,7 @@ from .adapter import (
     get_payment_provider,
     get_sms_provider,
     get_telegram_provider,
+    TelegramBotProvider,
 )
 from .repository import IntegrationLogRepository
 
@@ -93,6 +94,15 @@ class IntegrationService:
             external_id=str(result.get("message_id", "")),
         )
         await self.session.flush()
+        return result
+
+    async def validate_telegram(self) -> dict[str, Any]:
+        """Real connection check (Telegram getMe). Test mode is reported honestly."""
+        provider = get_telegram_provider()
+        if not isinstance(provider, TelegramBotProvider):
+            return {"success": False, "mode": "test", "provider": "mock", "message": "تلگرام در حالت آزمایشی است؛ اتصال واقعی فعال نیست"}
+        result = await provider.get_me()
+        result["mode"] = "live"
         return result
 
     async def create_deep_link(self, payload: str) -> dict[str, Any]:

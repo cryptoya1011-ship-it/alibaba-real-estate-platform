@@ -2,34 +2,36 @@
 @import "@fontsource-variable/vazirmatn";
 
 /* ------------------------------------------------------------------ */
-/*  AREP Design Tokens — "premium 2026"                               */
-/*  Deep teal/emerald primary · warm sand/amber accent · navy surfaces */
+/*  AREP Design Tokens — brand: Deep Petrol Blue #1B3A5C · Gold #C9A84C */
+/*  White #F5F5F5 · Light Gray #E0E0E0 (PROJECT_CONSTITUTION / UI_UX)   */
+/*  See docs/decisions/ADR-0018-brand-colors.md                         */
 /* ------------------------------------------------------------------ */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* light theme */
-  --background: #f6f4ef;
-  --background-2: #efece4;
-  --foreground: #0f172a;
+  /* light theme — brand colours used as-is */
+  --background: #f5f5f5;
+  --background-2: #ececec;
+  --foreground: #0f1f31;
   --card: #ffffff;
-  --card-2: #faf8f4;
+  --card-2: #fafafa;
   --popover: #ffffff;
-  --muted: #eeebe3;
-  --muted-foreground: #5b6474;
-  --border: color-mix(in oklab, #0f172a 11%, transparent);
-  --border-strong: color-mix(in oklab, #0f172a 18%, transparent);
-  --input: color-mix(in oklab, #0f172a 14%, transparent);
+  --muted: #eceef1;
+  --muted-foreground: #52606f;
+  --border: #e0e0e0;
+  --border-strong: #cfd4da;
+  --input: #d6dbe1;
 
-  --primary: #0f766e;
-  --primary-strong: #0b5f58;
-  --primary-soft: color-mix(in oklab, #0f766e 12%, transparent);
-  --primary-foreground: #f0fdfa;
+  --primary: #1b3a5c;
+  --primary-strong: #142c47;
+  --primary-soft: color-mix(in oklab, #1b3a5c 10%, transparent);
+  --primary-foreground: #f5f5f5;
 
-  --accent: #b7791f;
-  --accent-soft: color-mix(in oklab, #d9a441 18%, transparent);
-  --accent-foreground: #1f1405;
+  /* brand gold deepened for AA text contrast on white; #C9A84C stays in gradients/logo */
+  --accent: #8a6a1a;
+  --accent-soft: color-mix(in oklab, #c9a84c 20%, transparent);
+  --accent-foreground: #ffffff;
 
   --success: #15803d;
   --success-soft: color-mix(in oklab, #16a34a 13%, transparent);
@@ -37,42 +39,43 @@
   --warning-soft: color-mix(in oklab, #f59e0b 16%, transparent);
   --danger: #dc2626;
   --danger-soft: color-mix(in oklab, #ef4444 12%, transparent);
-  --info: #0369a1;
-  --info-soft: color-mix(in oklab, #0ea5e9 13%, transparent);
+  --info: #0e7490;
+  --info-soft: color-mix(in oklab, #06b6d4 13%, transparent);
 
-  --ring: color-mix(in oklab, #0f766e 55%, transparent);
-  --overlay: color-mix(in oklab, #0b1220 45%, transparent);
+  --ring: color-mix(in oklab, #1b3a5c 55%, transparent);
+  --overlay: color-mix(in oklab, #0a1726 45%, transparent);
 
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
-  --shadow-md: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 18px -6px rgb(15 23 42 / 0.12);
-  --shadow-lg: 0 2px 6px rgb(15 23 42 / 0.06), 0 24px 48px -16px rgb(15 23 42 / 0.25);
+  --shadow-sm: 0 1px 2px rgb(15 31 49 / 0.06);
+  --shadow-md: 0 1px 2px rgb(15 31 49 / 0.05), 0 6px 18px -6px rgb(15 31 49 / 0.12);
+  --shadow-lg: 0 2px 6px rgb(15 31 49 / 0.06), 0 24px 48px -16px rgb(15 31 49 / 0.25);
 
-  --gradient-primary: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #14b8a6 100%);
-  --gradient-hero: radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, #14b8a6 22%, transparent) 0%, transparent 55%),
-    radial-gradient(90% 80% at 0% 100%, color-mix(in oklab, #d9a441 20%, transparent) 0%, transparent 60%);
+  --gradient-primary: linear-gradient(135deg, #1b3a5c 0%, #24507d 55%, #2e6396 100%);
+  --gradient-hero: radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, #1b3a5c 16%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, color-mix(in oklab, #c9a84c 22%, transparent) 0%, transparent 60%);
 }
 
 .dark {
-  --background: #0b1220;
-  --background-2: #0e1628;
-  --foreground: #e6edf5;
-  --card: #111a2c;
-  --card-2: #152036;
-  --popover: #131d31;
-  --muted: #18233a;
-  --muted-foreground: #93a1b5;
-  --border: color-mix(in oklab, #e6edf5 9%, transparent);
-  --border-strong: color-mix(in oklab, #e6edf5 16%, transparent);
-  --input: color-mix(in oklab, #e6edf5 12%, transparent);
+  /* dark theme — petrol-night surfaces, light petrol for text/buttons, brand gold accent */
+  --background: #0a1726;
+  --background-2: #0d1c2e;
+  --foreground: #eaf0f6;
+  --card: #10223a;
+  --card-2: #142a45;
+  --popover: #12263f;
+  --muted: #16304c;
+  --muted-foreground: #9aabbf;
+  --border: color-mix(in oklab, #eaf0f6 10%, transparent);
+  --border-strong: color-mix(in oklab, #eaf0f6 17%, transparent);
+  --input: color-mix(in oklab, #eaf0f6 13%, transparent);
 
-  --primary: #2dd4bf;
-  --primary-strong: #14b8a6;
-  --primary-soft: color-mix(in oklab, #2dd4bf 14%, transparent);
-  --primary-foreground: #042f2b;
+  --primary: #8db6de;
+  --primary-strong: #6d9dcc;
+  --primary-soft: color-mix(in oklab, #8db6de 15%, transparent);
+  --primary-foreground: #071423;
 
-  --accent: #e3b35b;
-  --accent-soft: color-mix(in oklab, #e3b35b 16%, transparent);
-  --accent-foreground: #221603;
+  --accent: #c9a84c;
+  --accent-soft: color-mix(in oklab, #c9a84c 17%, transparent);
+  --accent-foreground: #1a1405;
 
   --success: #4ade80;
   --success-soft: color-mix(in oklab, #22c55e 16%, transparent);
@@ -80,19 +83,19 @@
   --warning-soft: color-mix(in oklab, #f59e0b 16%, transparent);
   --danger: #f87171;
   --danger-soft: color-mix(in oklab, #ef4444 16%, transparent);
-  --info: #7dd3fc;
-  --info-soft: color-mix(in oklab, #38bdf8 15%, transparent);
+  --info: #67e8f9;
+  --info-soft: color-mix(in oklab, #22d3ee 14%, transparent);
 
-  --ring: color-mix(in oklab, #2dd4bf 60%, transparent);
-  --overlay: color-mix(in oklab, #020617 65%, transparent);
+  --ring: color-mix(in oklab, #8db6de 60%, transparent);
+  --overlay: color-mix(in oklab, #030b14 65%, transparent);
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
   --shadow-md: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.5);
   --shadow-lg: 0 2px 8px rgb(0 0 0 / 0.35), 0 28px 56px -16px rgb(0 0 0 / 0.7);
 
-  --gradient-primary: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%);
-  --gradient-hero: radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, #14b8a6 20%, transparent) 0%, transparent 55%),
-    radial-gradient(90% 80% at 0% 100%, color-mix(in oklab, #e3b35b 12%, transparent) 0%, transparent 60%);
+  --gradient-primary: linear-gradient(135deg, #6d9dcc 0%, #8db6de 55%, #aecbe8 100%);
+  --gradient-hero: radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, #2e6396 30%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, color-mix(in oklab, #c9a84c 13%, transparent) 0%, transparent 60%);
 }
 
 @theme inline {

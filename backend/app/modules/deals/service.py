@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.errors import ConflictError, NotFoundError, ValidationError
+from app.core import permissions as perm
+from app.core.errors import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.core.tenant import current_context
 from app.db.system_models import CodeSequence
 
@@ -48,6 +49,23 @@ ALLOWED_TRANSITIONS: dict[str, set[str]] = {
 }
 
 
+COMMISSION_FIELDS = (
+    "commission_total",
+    "commission_agent_share",
+    "commission_office_share",
+    "commission_referral_share",
+    "commission_status",
+)
+
+
+def _guard_commission(values: dict, *, include_none: bool = False) -> None:
+    """Business rules §28: a consultant can never set or change commission amounts —
+    only users with commission:manage. (Read-only results are shown elsewhere.)"""
+    touched = [k for k in COMMISSION_FIELDS if k in values and (include_none or values[k] is not None)]
+    if touched and not current_context().has_permission(perm.COMMISSION_MANAGE):
+        raise ForbiddenError("تعیین یا تغییر کمیسیون فقط برای مدیر مجاز است")
+
+
 def _period_now() -> str:
     now = datetime.now(timezone.utc)
     return f"{now.year % 100:02d}{now.month:02d}"
@@ -74,6 +92,7 @@ class DealService:
         return full_code, period, seq_num
 
     async def create(self, payload: DealCreate) -> Deal:
+        _guard_commission(payload.model_dump())
         if payload.status not in VALID_STATUSES:
             raise ValidationError(f"وضعیت معامله نامعتبر: {payload.status}")
 
@@ -191,6 +210,7 @@ class DealService:
 
     async def update(self, deal_id: int, payload: DealUpdate) -> Deal:
         deal = await self.get_by_id(deal_id)
+        _guard_commission(payload.model_dump(exclude_unset=True), include_none=True)
 
         if payload.status and payload.status not in VALID_STATUSES:
             raise ValidationError(f"وضعیت نامعتبر: {payload.status}")

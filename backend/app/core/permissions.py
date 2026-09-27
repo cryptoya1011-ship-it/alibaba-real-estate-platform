@@ -17,6 +17,7 @@ PROPERTY_UPDATE = "property:update"
 PROPERTY_DELETE = "property:delete"
 PROPERTY_ADDRESS_READ = "property:address:read"   # exact address, never public
 PROPERTY_OWNER_READ = "property:owner:read"       # owner identity/contact
+PROPERTY_APPROVE = "property:approve"             # official inventory: approve / reject / request changes
 
 # CRM domain (Phase 6)
 CUSTOMER_CREATE = "customer:create"
@@ -74,6 +75,7 @@ ALL_PERMISSIONS: tuple[str, ...] = (
     PROPERTY_DELETE,
     PROPERTY_ADDRESS_READ,
     PROPERTY_OWNER_READ,
+    PROPERTY_APPROVE,
     CUSTOMER_CREATE,
     CUSTOMER_READ,
     CUSTOMER_UPDATE,
@@ -113,7 +115,9 @@ SUPER_ADMIN = "super_admin"
 SYSTEM_ADMIN = "system_admin"
 ORG_ADMIN = "organization_admin"
 BRANCH_ADMIN = "branch_admin"
+MANAGER = "manager"
 AGENT = "agent"
+OBSERVER = "observer"
 
 SYSTEM_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
     ORG_ADMIN: ALL_PERMISSIONS,
@@ -126,6 +130,7 @@ SYSTEM_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         PROPERTY_UPDATE,
         PROPERTY_ADDRESS_READ,
         PROPERTY_OWNER_READ,
+        PROPERTY_APPROVE,
         CUSTOMER_CREATE,
         CUSTOMER_READ,
         CUSTOMER_UPDATE,
@@ -176,6 +181,7 @@ SYSTEM_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         DEAL_CREATE,
         DEAL_READ,
         DEAL_UPDATE,
+        COMMISSION_READ,  # read-only result; never commission:manage (business rules §28/§30)
         AI_SEARCH,
         AI_MATCH,
         AI_SUGGEST,
@@ -183,3 +189,23 @@ SYSTEM_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         INTEGRATION_MAPS,
     ),
 }
+
+# Manager (بند 5/45): runs daily operations — approvals, commission, team invites,
+# integrations — but does not change the organization, branches or role definitions.
+SYSTEM_ROLE_PERMISSIONS[MANAGER] = tuple(
+    p for p in ALL_PERMISSIONS if p not in (ORG_UPDATE, BRANCH_MANAGE, ROLE_MANAGE, AI_MANAGE)
+)
+
+# Observer (بند 5): read-only access to operational data (no contact/address/financial management).
+SYSTEM_ROLE_PERMISSIONS[OBSERVER] = (
+    ORG_READ,
+    ORG_MEMBER_READ,
+    BRANCH_READ,
+    PROPERTY_READ,
+    CUSTOMER_READ,
+    CUSTOMER_REQUEST_READ,
+    VISIT_READ,
+    DEAL_READ,
+    COMMISSION_READ,
+    NOTIFICATION_READ,
+)

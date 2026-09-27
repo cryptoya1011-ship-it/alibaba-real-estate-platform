@@ -17,6 +17,22 @@ from app.modules.deals.service import DealService
 router = APIRouter(prefix="/deals", tags=["deals"])
 
 
+COMMISSION_FIELDS = (
+    "commission_total",
+    "commission_agent_share",
+    "commission_office_share",
+    "commission_referral_share",
+    "commission_status",
+)
+
+
+def _mask(ctx: TenantContext, data: dict) -> dict:
+    """Financial fields are visible only with commission:read/manage (business rules §30, §62)."""
+    if ctx.has_permission(perm.COMMISSION_READ) or ctx.has_permission(perm.COMMISSION_MANAGE):
+        return data
+    return {k: (None if k in COMMISSION_FIELDS else v) for k, v in data.items()}
+
+
 @router.post("", dependencies=[Depends(require_permission(perm.DEAL_CREATE))])
 async def create_deal(
     payload: DealCreate,
@@ -26,7 +42,7 @@ async def create_deal(
     service = DealService(session)
     deal = await service.create(payload)
     return ok(
-        {
+        _mask(ctx, {
             "id": deal.id,
             "code": deal.code,
             "title": deal.title,
@@ -36,7 +52,7 @@ async def create_deal(
             "agent_id": deal.agent_id,
             "amount": deal.amount,
             "version": deal.version,
-        }
+        })
     )
 
 
@@ -72,10 +88,12 @@ async def list_deals(
             "agent_id": d.agent_id,
             "amount": d.amount,
             "commission_total": d.commission_total,
+            "version": d.version,
             "created_at": d.created_at,
         }
         for d in items
     ]
+    data = [_mask(ctx, row) for row in data]
     return ok(data, page_meta(total=total, limit=pag.limit, offset=pag.offset))
 
 
@@ -88,7 +106,7 @@ async def get_deal_by_code(
     service = DealService(session)
     deal = await service.get_by_code(code)
     return ok(
-        {
+        _mask(ctx, {
             "id": deal.id,
             "code": deal.code,
             "title": deal.title,
@@ -105,7 +123,7 @@ async def get_deal_by_code(
             "notes": deal.notes,
             "version": deal.version,
             "created_at": deal.created_at,
-        }
+        })
     )
 
 
@@ -118,7 +136,7 @@ async def get_deal(
     service = DealService(session)
     deal = await service.get_by_id(deal_id)
     return ok(
-        {
+        _mask(ctx, {
             "id": deal.id,
             "code": deal.code,
             "title": deal.title,
@@ -138,7 +156,7 @@ async def get_deal(
             "version": deal.version,
             "created_at": deal.created_at,
             "updated_at": deal.updated_at,
-        }
+        })
     )
 
 
@@ -174,14 +192,14 @@ async def update_deal(
     service = DealService(session)
     deal = await service.update(deal_id, payload)
     return ok(
-        {
+        _mask(ctx, {
             "id": deal.id,
             "code": deal.code,
             "status": deal.status,
             "amount": deal.amount,
             "commission_total": deal.commission_total,
             "version": deal.version,
-        }
+        })
     )
 
 

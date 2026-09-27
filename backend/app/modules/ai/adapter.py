@@ -337,112 +337,51 @@ class MockProvider(AIProvider):
         }
 
 
-class OpenAIProvider(AIProvider):
-    """OpenAI provider — uses API key if set, else falls back to Mock logic"""
-
-    def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.mock = MockProvider()
-
-    async def parse_search_query(self, text: str) -> dict[str, Any]:
-        if not self.api_key:
-            result = await self.mock.parse_search_query(text)
-            result["parsed_by"] = "openai_mock_fallback"
-            return result
-
-        # Real OpenAI call would go here — for now fallback to mock with openai tag
-        # To keep Local-First and no external dependency in tests, we use mock
-        result = await self.mock.parse_search_query(text)
-        result["parsed_by"] = "openai"
-        result["confidence"] = 0.92
-        return result
-
-    async def suggest_description(self, property_data: dict[str, Any]) -> str:
-        if not self.api_key:
-            return await self.mock.suggest_description(property_data)
-        desc = await self.mock.suggest_description(property_data)
-        return f"[OpenAI] {desc}"
-
-    async def match_score(self, request_data: dict[str, Any], property_data: dict[str, Any]) -> dict[str, Any]:
-        if not self.api_key:
-            return await self.mock.match_score(request_data, property_data)
-        result = await self.mock.match_score(request_data, property_data)
-        result["provider"] = "openai"
-        return result
+# --- LLM providers -----------------------------------------------------------
+# OpenAI / Gemini / Claude / local LLM connections are NOT implemented yet.
+# Earlier versions returned the rule-based engine's output labelled as "openai",
+# "[Gemini] …" etc. — that was a fake integration (business rules §37/§75) and has
+# been removed (ADR-0019). Until a real client is written, selecting one of them
+# keeps the internal rule-based engine active and the status endpoint says so.
+LLM_PROVIDERS: dict[str, dict[str, Any]] = {
+    "openai": {"env": ("OPENAI_API_KEY",), "type": "llm"},
+    "gemini": {"env": ("GEMINI_API_KEY",), "type": "llm"},
+    "claude": {"env": ("CLAUDE_API_KEY", "ANTHROPIC_API_KEY"), "type": "llm"},
+    "local": {"env": (), "type": "local_llm"},
+}
+IMPLEMENTED_LLM_PROVIDERS: frozenset[str] = frozenset()
 
 
-class GeminiProvider(AIProvider):
-    def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.mock = MockProvider()
-
-    async def parse_search_query(self, text: str) -> dict[str, Any]:
-        result = await self.mock.parse_search_query(text)
-        result["parsed_by"] = "gemini" if self.api_key else "gemini_mock_fallback"
-        return result
-
-    async def suggest_description(self, property_data: dict[str, Any]) -> str:
-        desc = await self.mock.suggest_description(property_data)
-        return f"[Gemini] {desc}" if self.api_key else desc
-
-    async def match_score(self, request_data: dict[str, Any], property_data: dict[str, Any]) -> dict[str, Any]:
-        result = await self.mock.match_score(request_data, property_data)
-        result["provider"] = "gemini" if self.api_key else "gemini_mock_fallback"
-        return result
-
-
-class ClaudeProvider(AIProvider):
-    def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or os.getenv("CLAUDE_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-        self.mock = MockProvider()
-
-    async def parse_search_query(self, text: str) -> dict[str, Any]:
-        result = await self.mock.parse_search_query(text)
-        result["parsed_by"] = "claude" if self.api_key else "claude_mock_fallback"
-        return result
-
-    async def suggest_description(self, property_data: dict[str, Any]) -> str:
-        desc = await self.mock.suggest_description(property_data)
-        return f"[Claude] {desc}" if self.api_key else desc
-
-    async def match_score(self, request_data: dict[str, Any], property_data: dict[str, Any]) -> dict[str, Any]:
-        result = await self.mock.match_score(request_data, property_data)
-        result["provider"] = "claude" if self.api_key else "claude_mock_fallback"
-        return result
-
-
-class LocalProvider(AIProvider):
-    """Local LLM provider — for Termux / offline, uses mock logic"""
-
-    def __init__(self):
-        self.mock = MockProvider()
-
-    async def parse_search_query(self, text: str) -> dict[str, Any]:
-        result = await self.mock.parse_search_query(text)
-        result["parsed_by"] = "local"
-        return result
-
-    async def suggest_description(self, property_data: dict[str, Any]) -> str:
-        desc = await self.mock.suggest_description(property_data)
-        return f"[Local] {desc}"
-
-    async def match_score(self, request_data: dict[str, Any], property_data: dict[str, Any]) -> dict[str, Any]:
-        result = await self.mock.match_score(request_data, property_data)
-        result["provider"] = "local"
-        return result
+def requested_provider_name() -> str:
+    return (os.getenv("AI_PROVIDER") or getattr(settings, "AI_PROVIDER", "mock") or "mock").lower()
 
 
 def get_provider() -> AIProvider:
-    """Factory — AI_PROVIDER env: mock, openai, gemini, claude, local"""
-    provider_name = (os.getenv("AI_PROVIDER") or getattr(settings, "AI_PROVIDER", "mock") or "mock").lower()
+    """Factory. Only implemented providers are ever returned — never a relabelled mock."""
+    return MockProvider()
 
-    if provider_name == "openai":
-        return OpenAIProvider()
-    elif provider_name == "gemini":
-        return GeminiProvider()
-    elif provider_name == "claude":
-        return ClaudeProvider()
-    elif provider_name == "local":
-        return LocalProvider()
-    else:
-        return MockProvider()
+
+def providers_status() -> dict[str, Any]:
+    requested = requested_provider_name()
+    details: dict[str, Any] = {
+        "mock": {
+            "type": "rule-based",
+            "requires_api_key": False,
+            "persian": True,
+            "implemented": True,
+            "description": "موتور قاعده‌محور داخلی فارسی؛ بدون اینترنت و با نتیجهٔ قطعی",
+        }
+    }
+    for name, meta in LLM_PROVIDERS.items():
+        details[name] = {
+            "type": meta["type"],
+            "requires_api_key": bool(meta["env"]),
+            "has_key": any(os.getenv(e) for e in meta["env"]),
+            "implemented": name in IMPLEMENTED_LLM_PROVIDERS,
+            "description": "اتصال واقعی هنوز پیاده‌سازی نشده است",
+        }
+    active = "mock"
+    note = None
+    if requested != "mock" and requested not in IMPLEMENTED_LLM_PROVIDERS:
+        note = "ارائه‌دهندهٔ انتخاب‌شده هنوز پیاده‌سازی نشده؛ موتور قاعده‌محور داخلی استفاده می‌شود"
+    return {"current": active, "requested": requested, "available": list(details), "details": details, "note": note}

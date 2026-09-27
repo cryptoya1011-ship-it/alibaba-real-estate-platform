@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.errors import ConflictError, NotFoundError, ValidationError
+from app.core import permissions as perm
+from app.core.errors import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.core.tenant import current_context
 from app.db.system_models import CodeSequence
 
@@ -54,6 +55,8 @@ VALID_TRANSACTION_TYPES = set(TRANSACTION_CODES.keys())
 VALID_STATUSES = {
     "draft",
     "pending_review",
+    "changes_requested",
+    "rejected",
     "approved",
     "published",
     "reserved",
@@ -61,6 +64,14 @@ VALID_STATUSES = {
     "rented",
     "archived",
 }
+# Business rules §7 — official inventory. Anyone with property:create/update may
+# work on a *submission*; only property:approve moves a property into (or out of)
+# the official inventory.
+SUBMISSION_STATUSES = {"draft", "pending_review"}
+EDITABLE_BY_SUBMITTER = {"draft", "pending_review", "changes_requested"}
+REVIEWABLE_STATUSES = {"pending_review", "changes_requested"}
+OFFICIAL_STATUSES = {"approved", "published", "reserved", "sold", "rented", "archived"}
+
 VALID_REGISTRANT_TYPES = {"owner", "intermediary", "agent", "office_staff"}
 VALID_USAGES = {"residential", "commercial", "administrative", "industrial", "garden", "office"}
 
@@ -143,6 +154,12 @@ class PropertyService:
     # --- Create ---
 
     async def create(self, payload: PropertyCreate) -> Property:
+        ctx = current_context()
+        can_approve = ctx.has_permission(perm.PROPERTY_APPROVE)
+        if payload.status not in SUBMISSION_STATUSES and not can_approve:
+            raise ForbiddenError(
+                "ثبت رسمی ملک فقط برای مدیر مجاز است؛ ملک را «پیش‌نویس» یا «در انتظار بررسی» ثبت کنید"
+            )
         self._validate_create(payload)
 
         ctx = current_context()
@@ -176,6 +193,8 @@ class PropertyService:
             property_type=payload.property_type,
             transaction_type=payload.transaction_type,
             status=payload.status,
+            approved_by=ctx.user_id if payload.status in OFFICIAL_STATUSES else None,
+            approved_at=datetime.now(timezone.utc) if payload.status in OFFICIAL_STATUSES else None,
             registrant_type=payload.registrant_type,
             land_area=payload.land_area,
             built_area=payload.built_area,
@@ -306,6 +325,59 @@ class PropertyService:
 
     # --- Update ---
 
+    def _check_status_change(self, prop: Property, target: str) -> None:
+        """Submitters may only move a submission between draft ⇄ pending_review."""
+        ctx = current_context()
+        if ctx.has_permission(perm.PROPERTY_APPROVE):
+            return
+        if prop.status in EDITABLE_BY_SUBMITTER and target in SUBMISSION_STATUSES:
+            return
+        raise ForbiddenError("تغییر وضعیت رسمی ملک (تأیید، انتشار، فروش…) فقط برای مدیر مجاز است")
+
+    async def review(self, property_id: int, *, action: str, note: str | None, publish: bool, version: int | None) -> Property:
+        """approve / reject / request_changes — requires property:approve (checked by the router)."""
+        prop = await self.get_by_id(property_id)
+        ctx = current_context()
+        note = (note or "").strip() or None
+        values: dict = {"review_note": note}
+        if action == "approve":
+            if prop.status in OFFICIAL_STATUSES:
+                raise ConflictError("این ملک قبلاً تأیید شده است")
+            values.update(
+                status="published" if publish else "approved",
+                approved_by=ctx.user_id,
+                approved_at=datetime.now(timezone.utc),
+            )
+            title, priority = f"ملک «{prop.title}» تأیید شد", "normal"
+        elif action in ("reject", "request_changes"):
+            if prop.status not in REVIEWABLE_STATUSES:
+                raise ConflictError("فقط ملکِ «در انتظار بررسی» قابل رد یا درخواست اصلاح است")
+            if not note:
+                raise ValidationError("برای رد یا درخواست اصلاح، توضیح الزامی است")
+            values["status"] = "rejected" if action == "reject" else "changes_requested"
+            title = f"ملک «{prop.title}» رد شد" if action == "reject" else f"ملک «{prop.title}» نیاز به اصلاح دارد"
+            priority = "important"
+        else:
+            raise ValidationError("اقدام نامعتبر")
+
+        updated = await self.properties.update(prop, expected_version=version, **values)
+
+        # Tell the submitter (in-app notification; channel-independent — §33).
+        if prop.created_by and prop.created_by != ctx.user_id:
+            from app.modules.notifications.repository import NotificationRepository
+
+            await NotificationRepository(self.session).create(
+                user_id=prop.created_by,
+                channel="in_app",
+                priority=priority,
+                title=title,
+                body=note,
+                entity_type="property",
+                entity_id=prop.id,
+                data_json=json.dumps({"property_id": prop.id, "code": prop.code, "action": action}, ensure_ascii=False),
+            )
+        return updated
+
     async def update(self, property_id: int, payload: PropertyUpdate) -> Property:
         prop = await self.get_by_id(property_id)
 
@@ -317,7 +389,14 @@ class PropertyService:
         if payload.status and payload.status not in VALID_STATUSES:
             raise ValidationError(f"وضعیت نامعتبر: {payload.status}")
 
+        if payload.status and payload.status != prop.status:
+            self._check_status_change(prop, payload.status)
+
         values = payload.model_dump(exclude_unset=True, exclude={"version", "usages", "location", "amenities"})
+        if payload.status in OFFICIAL_STATUSES and prop.approved_by is None:
+            ctx = current_context()
+            values["approved_by"] = ctx.user_id
+            values["approved_at"] = datetime.now(timezone.utc)
         # Handle amenities separately
         if payload.amenities is not None:
             values["amenities_json"] = json.dumps(payload.amenities, ensure_ascii=False)

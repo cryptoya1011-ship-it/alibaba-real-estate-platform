@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +26,22 @@ from app.modules.rbac.service import RbacService
 
 VALID_STATUSES = {"pending", "accepted", "expired", "revoked"}
 VALID_ROLES = set(perm.SYSTEM_ROLE_PERMISSIONS.keys())  # org_admin, branch_admin, agent + custom will be allowed too
+
+
+DEFAULT_EXPIRY_DAYS = 7
+MAX_EXPIRY_DAYS = 30
+
+
+def is_expired(inv: OrganizationInvitation, now: datetime | None = None) -> bool:
+    if inv.expires_at is None:
+        return False
+    expires = inv.expires_at if inv.expires_at.tzinfo else inv.expires_at.replace(tzinfo=timezone.utc)
+    return expires <= (now or datetime.now(timezone.utc))
+
+
+def effective_status(inv: OrganizationInvitation) -> str:
+    """A pending invitation past its expiry is reported as expired (business rules §40)."""
+    return "expired" if inv.status == "pending" and is_expired(inv) else inv.status
 
 
 def _hash_token(raw: str) -> str:
@@ -64,6 +80,7 @@ class InvitationService:
         invited_phone: str | None = None,
         role_code: str,
         branch_id: int | None = None,
+        expires_in_days: int = DEFAULT_EXPIRY_DAYS,
     ) -> tuple[OrganizationInvitation, str]:
         """Returns (invitation, raw_token) — raw token only returned once"""
         await self._ensure_org_visible(organization_id)
@@ -97,6 +114,7 @@ class InvitationService:
             role_code=role_code,
             token_hash=token_hash,
             status="pending",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=max(1, min(MAX_EXPIRY_DAYS, expires_in_days))),
         )
         self.session.add(invitation)
         await self.session.flush()
@@ -128,6 +146,8 @@ class InvitationService:
         invitation = (await self.session.execute(stmt)).scalar_one_or_none()
         if invitation is None:
             raise NotFoundError("دعوت‌نامه یافت نشد یا منقضی شده")
+        if is_expired(invitation):
+            raise ValidationError("این دعوت‌نامه منقضی شده است؛ از مدیر بخواهید دعوت‌نامهٔ جدید بسازد")
 
         # Validate identity match
         # Get current user
@@ -224,7 +244,7 @@ class InvitationService:
         inv = await self.invitations.get(invitation_id)
         if inv is None or inv.organization_id != organization_id:
             raise NotFoundError("دعوت‌نامه یافت نشد")
-        if inv.status != "pending":
+        if effective_status(inv) != "pending":
             raise ConflictError("فقط دعوت‌نامه‌های در انتظار قابل لغو هستند")
         inv.status = "revoked"
         await self.session.flush()

@@ -55,7 +55,7 @@ async def test_ai_parse_search_query(client, login, auth_header):
     assert data["has_parking"] is True
     assert data["has_elevator"] is True
     assert data["max_price"] == 15000000000
-    assert data["parsed_by"] in ("mock", "openai", "gemini", "claude", "local", "openai_mock_fallback", "gemini_mock_fallback", "claude_mock_fallback")
+    assert data["parsed_by"] == "mock"
     assert "filters" in data
     assert data["filters"]["property_type"] == "apartment"
     assert data["filters"]["max_price"] == 15000000000

@@ -11,6 +11,14 @@ os.environ.update(
     JWT_SECRET="test-secret-not-for-production",
     TELEGRAM_BOT_TOKEN="123456:TEST-BOT-TOKEN",
     ALLOW_DEV_LOGIN="true",
+    # Tests never talk to real external services (a developer's backend/.env may enable them).
+    TELEGRAM_PROVIDER="mock",
+    SMS_PROVIDER="mock",
+    DIVAR_PROVIDER="mock",
+    SHEYPOOR_PROVIDER="mock",
+    PAYMENT_PROVIDER="mock",
+    MAPS_PROVIDER="mock",
+    AI_PROVIDER="mock",
 )
 
 import time  # noqa: E402

@@ -64,3 +64,17 @@ class TenantContextError(AppError):
     code = "TENANT_CONTEXT_REQUIRED"
     status_code = 400
     message = "سازمان فعال انتخاب نشده است"
+
+
+class IntegrationUnavailableError(AppError):
+    """An external integration is not connected / not implemented (never faked)."""
+
+    code = "INTEGRATION_UNAVAILABLE"
+    status_code = 503
+
+
+class ExternalServiceError(AppError):
+    """The external service answered with an error or could not be reached."""
+
+    code = "EXTERNAL_SERVICE_ERROR"
+    status_code = 502

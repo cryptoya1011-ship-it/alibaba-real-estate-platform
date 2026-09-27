@@ -17,6 +17,7 @@ from app.core.permissions import (
     INTEGRATION_LOGS,
     INTEGRATION_MAPS,
     INTEGRATION_PAYMENT,
+    INTEGRATION_MANAGE,
     INTEGRATION_SMS,
     INTEGRATION_TELEGRAM,
 )
@@ -78,6 +79,16 @@ async def telegram_send_property(
     svc = IntegrationService(session)
     result = await svc.send_property_via_telegram(str(chat_id), property_id)
     return ok(result)
+
+
+@router.post("/telegram/validate", summary="بررسی اتصال ربات تلگرام (getMe)")
+async def telegram_validate(
+    ctx=Depends(get_tenant_context),
+    perm=Depends(require_permission(INTEGRATION_MANAGE)),
+    session: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    svc = IntegrationService(session)
+    return ok(await svc.validate_telegram())
 
 
 @router.get("/telegram/deep-link", summary="ساخت Deep Link تلگرام")

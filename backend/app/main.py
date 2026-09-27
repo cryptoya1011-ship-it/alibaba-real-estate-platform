@@ -25,6 +25,17 @@ async def lifespan(app: FastAPI):
         await get_cache()
     except Exception as e:
         logger.warning(f"cache init failed: {e}")
+    # Keep the permission catalogue and system roles in sync with the code
+    # (additive: new permissions/roles reach existing databases without a manual seed).
+    try:
+        from app.db.session import SessionFactory
+        from app.modules.rbac.service import RbacService
+
+        async with SessionFactory() as session:
+            await RbacService(session).ensure_system_roles()
+            await session.commit()
+    except Exception as e:  # DB not migrated yet, etc. — never block startup
+        logger.warning(f"rbac sync skipped: {e}")
     yield
 
 

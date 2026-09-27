@@ -18,7 +18,7 @@ from app.core.idempotency import run_idempotent
 from app.core.responses import ok, page_meta
 from app.core.tenant import TenantContext
 from app.db.session import get_db
-from app.modules.properties.schemas import PropertyCreate, PropertyUpdate
+from app.modules.properties.schemas import PropertyCreate, PropertyReview, PropertyUpdate
 from app.modules.properties.service import PropertyService
 
 router = APIRouter(prefix="/properties", tags=["properties"])
@@ -102,6 +102,12 @@ def _property_to_internal_dict(prop, ctx: TenantContext) -> dict[str, Any]:
         "version": prop.version,
         "created_at": prop.created_at,
         "updated_at": prop.updated_at,
+        # Ownership / review trail (business rules §6, §7)
+        "created_by": prop.created_by,
+        "updated_by": prop.updated_by,
+        "approved_by": prop.approved_by,
+        "approved_at": prop.approved_at,
+        "review_note": prop.review_note,
         "usages": usages,
         "location": location,
         "media": media,
@@ -262,6 +268,21 @@ async def update_property(
     """ویرایش ملک — نیاز به version برای Optimistic Locking"""
     service = PropertyService(session)
     prop = await service.update(property_id, payload)
+    return ok(_property_to_internal_dict(prop, ctx))
+
+
+@router.post("/{property_id}/review", dependencies=[Depends(require_permission(perm.PROPERTY_APPROVE))])
+async def review_property(
+    property_id: int,
+    payload: PropertyReview,
+    ctx: TenantContext = Depends(get_tenant_context),
+    session: AsyncSession = Depends(get_db),
+) -> dict:
+    """تأیید / رد / درخواست اصلاح ملک ثبت‌شده — فقط مدیر (property:approve)"""
+    service = PropertyService(session)
+    prop = await service.review(
+        property_id, action=payload.action, note=payload.note, publish=payload.publish, version=payload.version
+    )
     return ok(_property_to_internal_dict(prop, ctx))
 
 
