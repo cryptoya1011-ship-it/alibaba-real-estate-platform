@@ -1,0 +1,11 @@
+# AREP — public HTTPS entrypoint. Certificate is issued automatically for {$DOMAIN}.
+{$DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy nginx:80 {
+		# nginx sends X-Frame-Options: SAMEORIGIN, which blocks Telegram Web
+		# (web.telegram.org embeds Mini Apps in an iframe). The CSP
+		# frame-ancestors directive from nginx still restricts who may embed.
+		header_down -X-Frame-Options
+	}
+}

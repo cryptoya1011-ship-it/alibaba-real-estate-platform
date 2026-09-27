@@ -1,10 +1,16 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath, URL } from "node:url";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "icons/*.png", "pwa-*.png"],
@@ -107,5 +113,24 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
   },
-  build: { outDir: "dist", sourcemap: false },
+  build: {
+    outDir: "dist",
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        // Long-term-cacheable vendor chunks (app code changes don't bust them).
+        manualChunks(id) {
+          if (id.includes("commonjsHelpers")) return "vendor-react";
+          if (!id.includes("node_modules")) return undefined;
+          if (/[\\/](clsx|tailwind-merge|class-variance-authority)[\\/]/.test(id)) return "vendor-react";
+          if (/[\\/](recharts|d3-|victory-vendor)/.test(id)) return "vendor-charts";
+          if (/[\\/](framer-motion|motion-dom|motion-utils)[\\/]/.test(id)) return "vendor-motion";
+          if (/[\\/](@radix-ui|cmdk|@floating-ui)[\\/]/.test(id)) return "vendor-radix";
+          if (/[\\/](react-hook-form|@hookform|zod)[\\/]/.test(id)) return "vendor-forms";
+          if (/[\\/](react|react-dom|scheduler|react-router|react-router-dom|@remix-run)[\\/]/.test(id)) return "vendor-react";
+          return undefined;
+        },
+      },
+    },
+  },
 });

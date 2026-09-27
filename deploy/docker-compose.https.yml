@@ -1,0 +1,45 @@
+# AREP — HTTPS layer for a VPS (Telegram Mini Apps require HTTPS).
+#
+# Adds Caddy in front of the existing nginx service. Caddy obtains and renews
+# a free Let's Encrypt certificate automatically. docker-compose.yml and
+# nginx/arep.conf are left untouched; this file only overlays them.
+#
+# Usage (from the repository root):
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.https.yml up -d --build
+#
+# Requires in the root .env: DOMAIN (plus the variables docker-compose.yml needs).
+# Requires Docker Compose v2.24+ (for the !reset tag).
+
+services:
+  nginx:
+    # Caddy owns ports 80/443 on the host; nginx is reachable only inside the network.
+    ports: !reset []
+
+  backend:
+    environment:
+      # Used for t.me/<bot>?start=... deep links.
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - nginx
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env (e.g. arep.example.com or 203-0-113-5.sslip.io)}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - arep_net
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
