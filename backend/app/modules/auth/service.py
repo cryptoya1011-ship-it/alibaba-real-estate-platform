@@ -111,6 +111,7 @@ class AuthService:
             organization_id=active_org,
             branch_id=active_branch,
             roles=roles,
+            telegram_id=user.telegram_id,
         )
         return TokenResponse(
             access_token=token,

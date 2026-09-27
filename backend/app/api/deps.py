@@ -46,6 +46,9 @@ async def get_context(
     user = await UserRepository(session).get(user_id)
     if user is None or not user.is_active:
         raise UnauthorizedError()
+    token_tg = payload.get("telegram_id")
+    if token_tg is not None and user.telegram_id is not None and int(token_tg) != user.telegram_id:
+        raise UnauthorizedError("نشست متعلق به کاربر دیگری است")
     if int(payload.get("permissions_version") or 0) != user.permissions_version:
         raise UnauthorizedError("دسترسی‌های شما تغییر کرده است. دوباره وارد شوید")
 

@@ -95,6 +95,7 @@ def create_access_token(
     organization_id: int | None = None,
     branch_id: int | None = None,
     roles: list[str] | None = None,
+    telegram_id: int | None = None,
 ) -> tuple[str, datetime]:
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_TTL_MINUTES)
     payload = {
@@ -105,6 +106,9 @@ def create_access_token(
         "roles": roles or [],
         "permissions_version": permissions_version,
         "session_id": session_id,
+        # Binds the token to the person, not only to a row id (a reset or
+        # restored database may hand the same id to someone else).
+        "telegram_id": telegram_id,
         "iat": int(datetime.now(timezone.utc).timestamp()),
         "exp": int(expires_at.timestamp()),
         "iss": settings.APP_CODE,

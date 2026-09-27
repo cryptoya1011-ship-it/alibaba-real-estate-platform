@@ -84,9 +84,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(
     () =>
-      onUnauthorized(() => {
+      onUnauthorized((err) => {
         clear();
-        toast.error("نشست شما منقضی شد؛ لطفاً دوباره وارد شوید");
+        // Several requests can fail at once — show a single toast (fixed id),
+        // with the server's reason when it is more specific than "expired".
+        const reason = err.message && !/^(خطای نامشخص|توکن نامعتبر است|Unauthorized)$/i.test(err.message) ? err.message : null;
+        toast.error("نشست شما منقضی شد؛ لطفاً دوباره وارد شوید", { id: "session-expired", description: reason ?? undefined });
       }),
     [clear],
   );
@@ -118,7 +121,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           next = await api.selectOrganization(orgId);
         }
       }
-      if (previous.user.id !== next.user.id) return false;
+      // Same person? Compare the stable Telegram identity, not the database id:
+      // after a database reset (e.g. a fresh dev/sandbox environment) the same
+      // Telegram account can come back with a different user id.
+      const samePerson =
+        previous.user.telegram_id != null && next.user.telegram_id != null
+          ? previous.user.telegram_id === next.user.telegram_id
+          : previous.user.id === next.user.id;
+      if (!samePerson) return false;
       apply(next);
       return true;
     });
