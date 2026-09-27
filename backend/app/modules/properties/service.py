@@ -64,7 +64,7 @@ VALID_STATUSES = {
     "rented",
     "archived",
 }
-# Business rules §7 — official inventory. Anyone with property:create/update may
+# docs/BUSINESS_RULES.md §3 — official inventory. Anyone with property:create/update may
 # work on a *submission*; only property:approve moves a property into (or out of)
 # the official inventory.
 SUBMISSION_STATUSES = {"draft", "pending_review"}
@@ -363,7 +363,7 @@ class PropertyService:
         creator, prop_id, code = prop.created_by, prop.id, prop.code
         updated = await self.properties.update(prop, expected_version=version, **values)
 
-        # Tell the submitter (in-app notification; channel-independent — §33).
+        # Tell the submitter (in-app notification; channel-independent — BUSINESS_RULES §8.1).
         if creator and creator != ctx.user_id:
             from app.modules.notifications.repository import NotificationRepository
 

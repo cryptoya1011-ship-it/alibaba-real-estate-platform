@@ -302,7 +302,7 @@ PropertyReviewAction = Literal["approve", "reject", "request_changes"]
 
 
 class PropertyReview(BaseModel):
-    """Manager decision on a submitted property (business rules §7.2)."""
+    """Manager decision on a submitted property (docs/BUSINESS_RULES.md §3.3)."""
 
     action: PropertyReviewAction
     note: str | None = Field(default=None, max_length=2000)

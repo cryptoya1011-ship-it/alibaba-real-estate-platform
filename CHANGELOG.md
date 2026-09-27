@@ -4,6 +4,32 @@
 
 ---
 
+## [Unreleased] — 2026-09-27 — Sprint 0 (Business Source of Truth)
+
+### Changed
+- **Brand colours:** petrol blue `#1B3A5C` + gold `#C9A84C` replace the teal/amber redesign palette (token values only; `styles.css`, `theme-color`). ADR-0018.
+- **Integrations are honest:** `GET /integrations/providers` details now carry `mode` (`live` / `test` / `unavailable`), `connected`, `implemented`, `reason`. The UI shows «متصل / حالت آزمایشی / متصل نیست». ADR-0019.
+- **AI providers are honest:** `GET /ai/providers` adds `requested`, `note`, and `implemented` per provider; `current` is the engine actually running (the built-in Persian rule-based engine, shown as «موتور داخلی»).
+- Tests pin every external provider to `mock` in `conftest.py`.
+
+### Added
+- Real Telegram Bot API calls (`getMe`, `sendMessage`) via `httpx`; `POST /integrations/telegram/validate`; errors: `503 INTEGRATION_UNAVAILABLE` (no token), `502 EXTERNAL_SERVICE_ERROR` (Telegram/network, never echoes the token).
+- Real OpenStreetMap Nominatim geocode / reverse geocode.
+- Property review: permission `property:approve`; statuses `changes_requested`, `rejected`; `POST /properties/{id}/review` (approve / reject / request_changes, optional publish); submitter gets an in-app notification; columns `approved_by`, `approved_at`, `review_note`. Review panel in the property detail and «ارسال برای بررسی» for consultants. ADR-0020.
+- System roles `manager` («مدیر») and `observer` («ناظر»); agents get `commission:read`. Roles/permissions are synced at startup.
+- Invitation expiry: `expires_at`, `expires_in_days` (1–30, default 7); expired invitations are listed as `expired` and cannot be accepted. UI lets the admin choose the lifetime and shows the expiry date.
+- Migration `c3d4e5f6a7b8_sprint0_property_review_invitation_expiry`.
+- `docs/BUSINESS_RULES.md`, `docs/FUNCTIONAL_SPECIFICATION.md`, ADR-0018 … ADR-0022.
+- `tests/test_sprint0.py` (7 tests) — total 73 passed.
+
+### Security
+- Consultants can no longer set, change or clear commission (`403`); commission amounts are hidden from users without `commission:read`.
+- Consultants can no longer create or move properties into the official inventory (`403`).
+- `use_provider` in AI requests no longer mutates the process-wide `AI_PROVIDER` setting.
+
+### Removed
+- Fake LLM provider classes (`OpenAIProvider`, `GeminiProvider`, `ClaudeProvider`, `LocalProvider`) that relabelled rule-based output; fake "real" fallbacks in Kavenegar / Divar / Sheypoor / Zarinpal providers (they now report «پیاده‌سازی نشده»). Reasons recorded in ADR-0019.
+
 ## [Unreleased] — 2026-09-21 — Integrations / Advanced Platform
 
 ### Added — Phase 15 Integrations / Advanced Platform (Sprint 11)

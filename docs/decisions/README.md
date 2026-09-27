@@ -24,6 +24,17 @@
 - ADR-0009 — Property Domain Layered Model (Phase 5)
 - ADR-0010 — CRM Domain (Person, Requests, Favorites, Saved Searches) (Phase 6)
 - ADR-0011 — Visits & Notifications Domain (Phase 7-8)
+- ADR-0012 — Deals & Commission
+- ADR-0013 — PWA / Public Platform
+- ADR-0014 — Server / Redis / RLS
+- ADR-0015 — Multi-Tenant
+- ADR-0016 — AI / Automation (بخش ارائه‌دهندگان LLM با ADR-0019 جایگزین شد)
+- ADR-0017 — Integrations (بخش fallback جعلی با ADR-0019 جایگزین شد)
+- ADR-0018 — رنگ‌های برند: آبی نفتی و طلایی
+- ADR-0019 — اتصال‌های صادق؛ حذف APIهای جعلی
+- ADR-0020 — تأیید ملک توسط مدیر، حفاظت کمیسیون، نقش‌های مدیر/ناظر، انقضای دعوت‌نامه
+- ADR-0021 — قالب کد ملک (حفظ قالب فعلی، تعویق پیشوند برند و دورهٔ شمسی)
+- ADR-0022 — حذف واقعی عضویت و نقش کاربر (استثنای Soft Delete)
 
 برای تصمیم جدید: `ADR-0009-...` بساز و اینجا لیست کن.
 

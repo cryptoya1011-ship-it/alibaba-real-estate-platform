@@ -454,7 +454,7 @@ type Values = z.infer<typeof schema>;
 const NONE = "none";
 
 function DealForm({ properties, persons, onDone }: { properties: PropertyListItem[]; persons: Person[]; onDone: () => void }) {
-  // Commission is set by a manager only (business rules §28); consultants see the result read-only.
+  // Commission is set by a manager only (docs/BUSINESS_RULES.md §7.1); consultants see the result read-only.
   const canCommission = useCan()(PERM_COMMISSION_MANAGE);
   const {
     register,

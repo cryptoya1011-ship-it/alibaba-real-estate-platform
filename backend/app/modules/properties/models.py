@@ -103,7 +103,7 @@ class Property(Base, TenantEntity):
     # Legal
     legal_info: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Official inventory review (business rules §7) — who approved and the last review note.
+    # Official inventory review (docs/BUSINESS_RULES.md §3) — who approved and the last review note.
     approved_by: Mapped[int | None] = mapped_column(BigInt, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     review_note: Mapped[str | None] = mapped_column(Text, nullable=True)

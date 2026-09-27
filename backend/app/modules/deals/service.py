@@ -59,7 +59,7 @@ COMMISSION_FIELDS = (
 
 
 def _guard_commission(values: dict, *, include_none: bool = False) -> None:
-    """Business rules §28: a consultant can never set or change commission amounts —
+    """docs/BUSINESS_RULES.md §7.1: a consultant can never set or change commission amounts —
     only users with commission:manage. (Read-only results are shown elsewhere.)"""
     touched = [k for k in COMMISSION_FIELDS if k in values and (include_none or values[k] is not None)]
     if touched and not current_context().has_permission(perm.COMMISSION_MANAGE):

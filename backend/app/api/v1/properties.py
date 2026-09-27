@@ -102,7 +102,7 @@ def _property_to_internal_dict(prop, ctx: TenantContext) -> dict[str, Any]:
         "version": prop.version,
         "created_at": prop.created_at,
         "updated_at": prop.updated_at,
-        # Ownership / review trail (business rules §6, §7)
+        # Ownership / review trail (docs/BUSINESS_RULES.md §3)
         "created_by": prop.created_by,
         "updated_by": prop.updated_by,
         "approved_by": prop.approved_by,

@@ -27,7 +27,7 @@ COMMISSION_FIELDS = (
 
 
 def _mask(ctx: TenantContext, data: dict) -> dict:
-    """Financial fields are visible only with commission:read/manage (business rules §30, §62)."""
+    """Financial fields are visible only with commission:read/manage (docs/BUSINESS_RULES.md §7.2)."""
     if ctx.has_permission(perm.COMMISSION_READ) or ctx.has_permission(perm.COMMISSION_MANAGE):
         return data
     return {k: (None if k in COMMISSION_FIELDS else v) for k, v in data.items()}

@@ -91,5 +91,5 @@ class OrganizationInvitation(Base, BaseEntity):
     token_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
     accepted_by_user_id: Mapped[int | None] = mapped_column(BigInt, nullable=True)
-    # One-time token lifetime (business rules §40). NULL = legacy invitation without expiry.
+    # One-time token lifetime (docs/BUSINESS_RULES.md §8.5). NULL = legacy invitation without expiry.
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -6,7 +6,7 @@ Core جدا از Integration (بند 14):
 - "mock" providers are an explicit *test mode* (every result carries mock=True)
 - A real provider is either implemented for real (Telegram Bot API, OSM Nominatim)
   or raises IntegrationUnavailableError — it NEVER returns mock data labelled as real
-  (Business rules §37/§75, ADR-0019).
+  (docs/BUSINESS_RULES.md §9, ADR-0019).
 - No Vendor Lock-in, each Adapter مستقل
 
 Providers:

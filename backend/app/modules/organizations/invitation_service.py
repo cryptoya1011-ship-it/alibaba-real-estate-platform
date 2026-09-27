@@ -40,7 +40,7 @@ def is_expired(inv: OrganizationInvitation, now: datetime | None = None) -> bool
 
 
 def effective_status(inv: OrganizationInvitation) -> str:
-    """A pending invitation past its expiry is reported as expired (business rules §40)."""
+    """A pending invitation past its expiry is reported as expired (docs/BUSINESS_RULES.md §8.5)."""
     return "expired" if inv.status == "pending" and is_expired(inv) else inv.status
 
 

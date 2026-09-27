@@ -479,7 +479,7 @@ export function PropertyForm({ onDone, initial }: { onDone: (saved?: PropertyDet
   });
 
   const districtOptions = DISTRICTS.filter((d) => d.city === cityCode);
-  // Official inventory (approve/publish/sell…) is manager-only — business rules §7.
+  // Official inventory (approve/publish/sell…) is manager-only — docs/BUSINESS_RULES.md §3.
   const canApprove = can(PERM_PROPERTY_APPROVE);
   const currentStatus = initial?.status;
   const statusLocked = !canApprove && !!currentStatus && !["draft", "pending_review", "changes_requested"].includes(currentStatus);

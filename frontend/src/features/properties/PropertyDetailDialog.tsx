@@ -467,7 +467,7 @@ function DetailBody({
 }
 
 /**
- * Official-inventory review (business rules §7): the consultant submits, a manager
+ * Official-inventory review (docs/BUSINESS_RULES.md §3): the consultant submits, a manager
  * approves / rejects / requests changes. Hidden when there is nothing to do.
  */
 function ReviewPanel({

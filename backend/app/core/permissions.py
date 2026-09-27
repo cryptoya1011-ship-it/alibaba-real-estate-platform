@@ -181,7 +181,7 @@ SYSTEM_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         DEAL_CREATE,
         DEAL_READ,
         DEAL_UPDATE,
-        COMMISSION_READ,  # read-only result; never commission:manage (business rules §28/§30)
+        COMMISSION_READ,  # read-only result; never commission:manage (docs/BUSINESS_RULES.md §7)
         AI_SEARCH,
         AI_MATCH,
         AI_SUGGEST,
@@ -190,13 +190,13 @@ SYSTEM_ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
     ),
 }
 
-# Manager (بند 5/45): runs daily operations — approvals, commission, team invites,
+# Manager (docs/BUSINESS_RULES.md §2): runs daily operations — approvals, commission, team invites,
 # integrations — but does not change the organization, branches or role definitions.
 SYSTEM_ROLE_PERMISSIONS[MANAGER] = tuple(
     p for p in ALL_PERMISSIONS if p not in (ORG_UPDATE, BRANCH_MANAGE, ROLE_MANAGE, AI_MANAGE)
 )
 
-# Observer (بند 5): read-only access to operational data (no contact/address/financial management).
+# Observer (docs/BUSINESS_RULES.md §2): read-only access to operational data (no contact/address/financial management).
 SYSTEM_ROLE_PERMISSIONS[OBSERVER] = (
     ORG_READ,
     ORG_MEMBER_READ,

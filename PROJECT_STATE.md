@@ -2,7 +2,40 @@
 
 > این فایل برای ادامه کار در Session جدید است. اول این را بخوان، بعد کد.
 
-## وضعیت فعلی
+## وضعیت فعلی (2026-09-27)
+- **Sprint جاری:** Sprint 0 (بر اساس Business Source of Truth مالک) — **تمام‌شده**. بعدی: **Sprint 1**.
+- **Branch:** `arena/01a0d354-alibaba-real-estate-platform`
+- **اسناد مرجع (به این ترتیب بخوان):**
+  1. `docs/BUSINESS_RULES.md` — قوانین کسب‌وکار + وضعیت هر قانون
+  2. `docs/FUNCTIONAL_SPECIFICATION.md` — ماژول‌ها، صفحه‌ها، جریان‌ها
+  3. `CURRENT_STATE.md` — وضعیت لحظه‌ای، بدهی فنی، Next Task
+  4. `docs/decisions/` — ADR-0001 تا ADR-0022
+  5. `docs/UI_REDESIGN_NOTES.md` — سیستم طراحی رابط کاربری
+- **تست:** `cd backend && .venv/bin/python -m pytest` → 73 passed · Frontend: `npx tsc -b && npx vite build` → OK
+- **Migration آخر:** `c3d4e5f6a7b8` (بررسی ملک + انقضای دعوت‌نامه)
+
+### انجام‌شده در Sprint 0
+- رنگ برند آبی نفتی/طلایی (ADR-0018)
+- اتصال‌های صادق و حذف APIهای جعلی (ADR-0019)
+- تأیید ملک فقط توسط مدیر + جریان بررسی، حفاظت کمیسیون، نقش‌های مدیر و ناظر، انقضای دعوت‌نامه (ADR-0020)
+- ثبت تصمیم قالب کد ملک (ADR-0021) و حذف واقعی عضویت (ADR-0022)
+
+### Sprint 1 (بعدی — P1 هستهٔ عملیاتی)
+- درخواست: مشاور مسئول اصلی، Claim ایمن در برابر رقابت، سابقهٔ واگذاری، مهلت، اقدام بعدی
+- پیگیری‌ها (Follow-up) + فهرست «بی‌مسئول» و «عقب‌افتاده»
+- بازدید: وضعیت‌های نهایی (عدم حضور مالک، انجام‌نشده…)، بدون حذف توسط مشاور، تاریخچه، انتخابگر تاریخ شمسی
+- جدول عمومی `audit_logs` با IP و User-Agent
+
+### قوانین کار (MASTER PROMPT)
+- ادامهٔ همین پروژه؛ بدون بازسازی، بدون تغییر Stack، بدون Docker اجباری برای محلی/اندروید.
+- هیچ اتصال/داده/API جعلی؛ Mock فقط در تست.
+- قبل از تغییر: `git status` و `git log --oneline -n 10`؛ بعد: تست + بازبینی diff + Conventional Commit.
+- تعارض با قوانین → ADR. کلیدها هرگز نمایش داده نشوند.
+
+---
+
+## تاریخچه — وضعیت Sprint 1 پلتفرم (2026-09-18)
+
 - **Sprint جاری:** Sprint 1 — Platform Core (تمام‌شده)
 - **تاریخ:** 2026-09-18
 - **Commit:** `4ef84fe` — chore(init): AREP platform core — auth, tenancy, RBAC, API foundation
@@ -16,7 +49,7 @@
   Master Prompt روی GitHub وجود نداشت.
 - **Runtime تأییدشده:** Python 3.12+ (تست‌شده روی 3.14)، SQLite، uvicorn — سرور بالا آمده و پاسخ داده است.
 
-## Featureهای انجام‌شده (VERIFIED — تست اجرا شده)
+### Featureهای انجام‌شده (VERIFIED — تست اجرا شده)
 - Config امن با pydantic-settings + Guard برای Production (JWT_SECRET/dev-login/bot token).
 - Response Envelope واحد `{success, data, meta, error}` + Error Handler سراسری (بدون افشای خطای خام DB).
 - Telegram Web App `initData` با HMAC-SHA256 + بررسی `auth_date` (تست: امضای دست‌کاری‌شده، user جعلی، initData منقضی).
@@ -37,15 +70,15 @@
 - Frontend: Telegram Web App (React+TS+Vite) — `npm run build` موفق.
 - Docker Compose (Postgres+Redis+Nginx) و Dockerfile — **UNVERIFIED** (روی این محیط اجرا نشد).
 
-## Migrationهای اجراشده
+### Migrationهای اجراشده
 - `0001_initial_platform_core` — users, organizations, branches, user_organizations, user_branches,
   organization_invitations, roles, permissions, role_permission_map, user_role_map,
   code_sequences, idempotency_keys.
 
-## تست‌ها
+### تست‌ها
 `bash scripts/test.sh` → **28 passed** (health/envelope، auth، organizations، tenant isolation، migration roundtrip).
 
-## Featureهای باقی‌مانده (به ترتیب اولویت)
+### Featureهای باقی‌مانده (به ترتیب اولویت)
 1. **Property Domain** (Sprint 2): Property + PropertyUsage (چند کاربری) + PropertySection + Owner ≠ SubmittedBy
    + Media + Property Code از `code_sequences` + پنهان‌سازی آدرس دقیق بر اساس Permission.
 2. **Invitation Flow**: پذیرش دعوت محدود به هویت مشخص (جدول موجود، Endpoint ندارد).
@@ -55,7 +88,7 @@
 6. **PostgreSQL RLS** به‌عنوان لایه دوم Isolation.
 7. **Redis** برای Cache دسترسی‌ها و Rate Limit.
 
-## Known Issues / بدهی فنی
+### Known Issues / بدهی فنی
 - RLS در دیتابیس فعال نیست (ADR-002). فیلتر Tenant فعلاً در Repository است.
 - `permissions` در هر Request از DB خوانده می‌شود (یک Query اضافه) — عمداً؛ Cache بعداً.
 - `POST /auth/dev-login` فقط برای توسعه؛ در Production خودکار غیرفعال است.
@@ -63,7 +96,7 @@
 - Rate Limiting ندارد.
 - Docker Compose تست واقعی نشده.
 
-## تصمیمات مهم
+### تصمیمات مهم
 در `docs/DECISIONS.md` (ADR-001 تا ADR-008).
 
 ## دستور اجرای پروژه

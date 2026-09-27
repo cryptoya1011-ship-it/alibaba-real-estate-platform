@@ -3,10 +3,11 @@
 > این فایل Source of Truth برای وضعیت لحظه‌ای پروژه است (بند 66 قانون اساسی). بعد از هر Sprint مهم باید Update شود.
 
 ## Last Updated
-- **Date:** 2026-09-21
-- **Branch:** `arena/01a0c452-alibaba-real-estate-platform`
-- **Last Verified Commit:** `773cd7c feat(ai): Phase 14 AI / Automation DONE`
-- **Environment:** Local-First (Termux compatible), SQLite, FastAPI, React+Vite, PWA, PostgreSQL ready, Redis ready, Multi-Tenant real, AI Adapter real, Integrations real
+- **Date:** 2026-09-27
+- **Branch:** `arena/01a0d354-alibaba-real-estate-platform`
+- **Last Verified Commit:** Sprint 0 (Business Source of Truth) — see `git log`
+- **Environment:** Local-First (Termux compatible), SQLite, FastAPI, React+Vite, PWA, PostgreSQL ready, Redis ready, Multi-Tenant real
+- **منبع قوانین:** `docs/BUSINESS_RULES.md` · **مشخصات عملکردی:** `docs/FUNCTIONAL_SPECIFICATION.md`
 
 ## Current Phase
 - **Phase 0:** DONE (2026-09-21)
@@ -37,9 +38,20 @@
 - **Sprint 9 — Multi-Tenant:** DONE (2026-09-21) — Org A,B,C isolation 404, Invitation token single-use, Custom Roles permissions via cache, Super Admin dashboard bypass RLS
 - **Sprint 10 — AI / Automation:** DONE (2026-09-21) — AI Adapter قابل تعویض, Persian NLP deterministic, Natural Search + Execute, Auto Matching with score+reasons, Suggest Description, Frontend AI tab
 - **Sprint 11 — Integrations / Advanced Platform:** DONE (2026-09-21) — Telegram/SMS/Listings/Payment/Maps adapters mock deterministic, no external API, OSM free, logs audit, Frontend tab 🔌
-- **Sprint 12 — Final Polish:** NEXT
+- **UI Redesign** (`docs/UI_REDESIGN_NOTES.md`): DONE
+- **Sprint 0 (Business Source of Truth) — Brand + Honest Integrations + Approval + Commission + Invitation expiry:** DONE (2026-09-27)
+- **Sprint 1 — Request ownership, Follow-ups, Visit statuses, Audit Log:** NEXT
 
 ## Completed Features (VERIFIED)
+
+### Sprint 0 — 2026-09-27
+- رنگ برند آبی نفتی `#1B3A5C` + طلایی `#C9A84C` (ADR-0018).
+- اتصال‌های صادق: حالت `live/test/unavailable` برای هر سرویس؛ تلگرام واقعی (`getMe`, `sendMessage`) + `POST /integrations/telegram/validate`؛ Nominatim واقعی؛ کاوه‌نگار/زرین‌پال/دیوار/شیپور → 503 «پیاده‌سازی نشده»؛ کلاس‌های جعلی LLM حذف؛ `use_provider` دیگر تنظیم سراسری را عوض نمی‌کند (ADR-0019).
+- تأیید ملک: `property:approve`، وضعیت‌های `changes_requested/rejected`، `POST /properties/{id}/review`، اعلان به ثبت‌کننده، ستون‌های `approved_by/approved_at/review_note` (ADR-0020).
+- کمیسیون: فقط `commission:manage` تعیین/تغییر؛ مشاور `commission:read`؛ ماسک مبلغ برای بدون‌مجوز.
+- نقش‌های سیستمی `manager` و `observer`؛ همگام‌سازی نقش‌ها و مجوزها در شروع برنامه.
+- انقضای دعوت‌نامه (`expires_at`، ۱ تا ۳۰ روز، پیش‌فرض ۷).
+- Migration `c3d4e5f6a7b8` (upgrade/downgrade تست شد).
 
 ### Platform Core (Sprint 1)
 - Config, Envelope, Telegram HMAC, JWT, Tenant Context, TenantRepository 404, RBAC, Org/Branch/Membership, Optimistic Locking, Soft Delete, Idempotency, Pagination, Migration 0001
@@ -124,52 +136,34 @@
 - **ADR:** ADR-0016
 
 ## In Progress
-- [x] Multi-Tenant DONE
-- [x] AI / Automation DONE — AI Adapter قابل تعویض, Persian NLP deterministic, Natural Search + Execute, Auto Matching with score+reasons, Suggest Description, Core جدا از AI
-- [x] Integrations / Advanced Platform DONE — Telegram Bot send_message/property_card/deep_link t.me, SMS Kavenegar/mock OTP, Listings Divar/Sheypoor publish/unpublish, Payment Zarinpal/mock create/verify, Maps OSM/mock geocode/reverse/static/distance haversine, Adapter مستقل, No Vendor Lock-in, RLS + Audit Logs, Core جدا از Integration
-- [ ] Next: Final Polish / Accounting / Media Upload / FTS
+- [x] Sprint 0 — DONE
+- [ ] Sprint 1 — درخواست: مشاور مسئول، Claim ایمن، سابقهٔ واگذاری، مهلت، اقدام بعدی، پیگیری‌ها، فهرست بی‌مسئول/عقب‌افتاده؛ بازدید: وضعیت‌های نهایی + تاریخچه + انتخابگر شمسی؛ جدول عمومی `audit_logs`
 
-## Pending Work (اولویت‌دار)
-1. **Search Improvements:** PostgreSQL FTS با tsvector فارسی، ranking — Natural Language already via AI Adapter, need DB FTS
-2. **Frontend Feature-Based refactor + Design System (Button, Input, Modal, BottomSheet, Card...)**
-3. **Media Upload endpoint + Object Storage (S3/MinIO) — filesystem abstraction ready**
-4. **Accounting Domain:** commission ledger, payments, distribution — Payment integration now exists, need ledger
-5. **Prometheus metrics for cache hit rate, rate limit hits, AI provider usage, Integration usage**
-6. **PostgreSQL RLS CI with real Postgres container + Redis + integration_logs**
-7. **AI Improvements:** Real OpenAI/Gemini/Claude integration with streaming, embedding for semantic search, auto description with image — adapter ready
-8. **Integration Improvements:** Real Telegram Bot API via httpx, Kavenegar real API, Divar/Sheypoor real API, Zarinpal real API, OSM Nominatim real call — currently mock with fallback, ready for prod keys
+## Pending Work (اولویت‌دار — ترتیب مالک P1..P6)
+1. **P1 هستهٔ عملیاتی:** Sprint 1 (بالا) + یادآوری روزانه و ارجاع به مدیر + درخواست بازدید عمومی ← CRM.
+2. **P2 معاملات:** انواع معامله (فروش/اجاره/مشارکت/معاوضه) با فیلدهای خاص؛ اعمال قوانین انتقال مرحله در سرور.
+3. **P3 مالی:** موتور قوانین کمیسیون (نسخه‌دار، اختصاصی مشاور، تاریخ اجرا، Audit)؛ دفتر کمیسیون.
+4. **P4 مدیریت:** جلسات مدیر، اطلاعیه‌ها، گزارش‌ها، داشبورد عمل‌محور.
+5. **P5 اتصال‌ها:** Web Push واقعی، اعلان تلگرام، پیامک/پرداخت واقعی (با مستندات رسمی).
+6. **P6 پلتفرم:** Rate limit روی Redis، FTS فارسی، قالب نهایی کد ملک (ADR-0021)، RLS FORCE.
 
 ## Blocked
 - هیچ مورد Blocked فنی وجود ندارد.
 
 ## Known Issues / بدهی فنی
-- RLS policies use ::text comparison for org_id BigInt — might be slower but OK for second layer
-- RLS allows NULL org_id for properties SELECT for initial setup — could be tightened
-- Rate limiting in-memory fallback not shared across workers — needs Redis in prod (we have Redis)
-- Permission cache invalidation only via TTL + version bump — role change without version bump stale 5min (TODO bump version on role assign)
-- No Redis persistence test in CI (requires Docker)
-- Nginx bot detection simple regex — might need more robust
-- Period for Property/Deal Code Gregorian YYMM — TODO Jalali
-- Notification delivery فقط in_app — Telegram/SMS/Push adapter آینده
-- No real-time (WebSocket) — Polling فعلا
-- Commission accounting جدا هنوز نیست — فقط فیلدهای ساده
-- Public images relative path — برای OG crawler باید absolute URL (TODO base URL)
-- Offline outbox فقط create_property — بقیه operations هنوز offline نیستند
-- Service Worker devOptions enabled true — در dev هم SW فعال
+- RLS policies use ::text comparison for org_id BigInt; `FORCE ROW LEVEL SECURITY` فعال نیست (مالک جدول از RLS عبور می‌کند).
+- Rate limiting in-memory — برای چند worker نیاز به Redis.
+- Period کد ملک/معامله میلادی `YYMM` — شمسی معوق (ADR-0021).
+- اعلان فقط درون‌برنامه — تلگرام/Push آینده.
+- قوانین انتقال مرحلهٔ معامله (`ALLOWED_TRANSITIONS`) در سرور اعمال نمی‌شود.
+- Audit Log عمومی وجود ندارد؛ حذف عضویت فقط در لاگ برنامه ثبت می‌شود (ADR-0022).
+- Offline outbox فقط ثبت ملک.
+- ملک‌های منتشرشده قبل از Sprint 0 `approved_by` ندارند (تغییری در رفتار ایجاد نمی‌کند).
 
 ## Next Task
-**Sprint 12 — Final Polish / Accounting / Media:**
-- Media Upload endpoint + Object Storage (S3/MinIO) — abstraction ready
-- Accounting Domain: commission ledger, payments, distribution (Payment integration exists)
-- PostgreSQL FTS فارسی با tsvector + ranking
-- Frontend Feature-Based refactor + Design System (Button, Input, Modal, BottomSheet, Card)
-- Prometheus metrics for cache, rate limit, AI, Integrations
-- Real Integration API calls with httpx (currently mock fallback)
+**Sprint 1** — به `docs/BUSINESS_RULES.md` §۴ و §۵ و §۱.۴ مراجعه شود.
 
 ## Verification
-- `alembic upgrade head` → OK (0001 + 0002 + 0003 + 0004 + 0005 + 0006 = a1b2c3d4e5f6 + b2c3d4e5f6a7 integrations) — RLS no-op on SQLite, enables policies on PostgreSQL including integration_logs
-- `pytest -k "not test_alembic"` → 58 passed (conftest overrides get_db_public + clears cache, AI mock deterministic, Integrations mock deterministic)
-- Frontend: `npm run build` → OK (12 tabs including AI 🤖 + Integrations 🔌), PWA 36 entries 1.7MB
-- Backend: `app/main.py` lifespan init cache, RateLimitMiddleware enabled, RLS context via SET LOCAL, AI provider mock default, Integrations mock default, OSM free
-- Nginx: arep.conf verified with security headers, gzip, PWA caching, Deep Links /p/{code} bot→OG else SPA
-- Docker Compose: verified with healthchecks, depends_on healthy, networks, volumes, env required, AI_PROVIDER mock, INTEGRATIONS mock
+- `alembic upgrade head` → OK تا `c3d4e5f6a7b8` (downgrade -1 و upgrade دوباره تست شد).
+- `pytest` → **73 passed** (۷ تست جدید `tests/test_sprint0.py`؛ همهٔ ارائه‌دهنده‌ها در تست روی mock قفل‌اند).
+- Frontend: `tsc -b && vite build` → OK.

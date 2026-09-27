@@ -340,7 +340,7 @@ class MockProvider(AIProvider):
 # --- LLM providers -----------------------------------------------------------
 # OpenAI / Gemini / Claude / local LLM connections are NOT implemented yet.
 # Earlier versions returned the rule-based engine's output labelled as "openai",
-# "[Gemini] …" etc. — that was a fake integration (business rules §37/§75) and has
+# "[Gemini] …" etc. — that was a fake integration (docs/BUSINESS_RULES.md §1.6, §9) and has
 # been removed (ADR-0019). Until a real client is written, selecting one of them
 # keeps the internal rule-based engine active and the status endpoint says so.
 LLM_PROVIDERS: dict[str, dict[str, Any]] = {
