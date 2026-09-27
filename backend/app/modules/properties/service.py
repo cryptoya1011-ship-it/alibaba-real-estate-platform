@@ -360,22 +360,28 @@ class PropertyService:
         else:
             raise ValidationError("اقدام نامعتبر")
 
+        creator, prop_id, code = prop.created_by, prop.id, prop.code
         updated = await self.properties.update(prop, expected_version=version, **values)
 
         # Tell the submitter (in-app notification; channel-independent — §33).
-        if prop.created_by and prop.created_by != ctx.user_id:
+        if creator and creator != ctx.user_id:
             from app.modules.notifications.repository import NotificationRepository
 
             await NotificationRepository(self.session).create(
-                user_id=prop.created_by,
+                user_id=creator,
                 channel="in_app",
                 priority=priority,
                 title=title,
                 body=note,
                 entity_type="property",
-                entity_id=prop.id,
-                data_json=json.dumps({"property_id": prop.id, "code": prop.code, "action": action}, ensure_ascii=False),
+                entity_id=prop_id,
+                data_json=json.dumps({"property_id": prop_id, "code": code, "action": action}, ensure_ascii=False),
             )
+        await self.session.flush()
+        await self.session.refresh(updated)
+        _ = updated.usages
+        _ = updated.location
+        _ = updated.media
         return updated
 
     async def update(self, property_id: int, payload: PropertyUpdate) -> Property:

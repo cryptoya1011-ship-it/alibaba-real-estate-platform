@@ -14,6 +14,7 @@ import {
   MessageSquareText,
   Navigation,
   Plug,
+  PlugZap,
   RotateCw,
   ScrollText,
   Send,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { api } from "@/api";
 import { invalidate, useApi } from "@/hooks/useApi";
-import type { IntegrationResult } from "@/lib/types";
+import type { IntegrationMode, IntegrationResult, TelegramValidation } from "@/lib/types";
 import { INTEGRATION_PROVIDER_META, PROVIDER_NAME_FA } from "@/lib/constants";
 import { faNum, formatToman, parseNumber, relativeTime, toEnDigits } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -78,7 +79,8 @@ export default function IntegrationsPage() {
           {Object.entries(providers.data.details).map(([key, det]) => {
             const Icon = PROVIDER_ICONS[key] ?? Plug;
             const meta = INTEGRATION_PROVIDER_META[key] ?? { label: key, hint: "" };
-            const isMock = det.provider === "mock";
+            const mode = det.mode ?? (det.provider === "mock" ? "test" : "live");
+            const badge = MODE_BADGE[mode];
             return (
               <li key={key} className="flex flex-col gap-2 rounded-[16px] bg-card p-3 shadow-sm hairline">
                 <div className="flex items-center justify-between">
@@ -104,9 +106,13 @@ export default function IntegrationsPage() {
                   <p className="font-semibold">{meta.label}</p>
                   <p className="text-caption text-muted-foreground">{meta.hint}</p>
                 </div>
-                <Badge tone={isMock ? "warning" : "success"} className="self-start">
-                  {PROVIDER_NAME_FA[det.provider] ?? det.provider}
-                </Badge>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge tone={badge.tone} className="self-start" title={det.reason ?? undefined}>
+                    {badge.label}
+                  </Badge>
+                  {mode !== "test" && <span className="text-caption text-muted-foreground">{PROVIDER_NAME_FA[det.provider] ?? det.provider}</span>}
+                </div>
+                {mode === "unavailable" && det.reason && <p className="text-caption leading-6 text-danger">{det.reason}</p>}
               </li>
             );
           })}
@@ -168,10 +174,50 @@ const phoneField = z.string().trim().regex(/^[+0-9۰-۹]{8,15}$/, "شماره م
 
 type TgMode = "send" | "property" | "deeplink";
 
+const MODE_BADGE: Record<IntegrationMode, { label: string; tone: "success" | "warning" | "danger" }> = {
+  live: { label: "متصل", tone: "success" },
+  test: { label: "حالت آزمایشی", tone: "warning" },
+  unavailable: { label: "متصل نیست", tone: "danger" },
+};
+
+/** Real getMe check — shows the bot username on success, never the token. */
+function TgValidate() {
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<TelegramValidation | null>(null);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = await api.intTelegramValidate();
+      setRes(r);
+      if (r.mode === "live") toast.success("اتصال ربات تلگرام برقرار است");
+      else toast.warning(r.message ?? "تلگرام در حالت آزمایشی است");
+    } catch (err) {
+      setRes(null);
+      toast.error(errorMessage(err, "اتصال به تلگرام برقرار نشد"));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-[12px] bg-card-2 p-2.5 hairline">
+      <Button size="sm" variant="secondary" onClick={run} loading={busy}>
+        <PlugZap aria-hidden /> بررسی اتصال
+      </Button>
+      {res?.mode === "live" && res.bot_username && (
+        <span className="text-caption">
+          ربات: <Code>@{res.bot_username}</Code>
+        </span>
+      )}
+      {res && res.mode !== "live" && <span className="text-caption text-warning">{res.message}</span>}
+    </div>
+  );
+}
+
 function TelegramTool() {
   const [mode, setMode] = useState<TgMode>("send");
   return (
     <ToolCard icon={Send} title="تلگرام">
+      <TgValidate />
       <Segmented<TgMode>
         size="sm"
         aria-label="عملیات تلگرام"

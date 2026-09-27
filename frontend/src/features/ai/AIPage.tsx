@@ -7,7 +7,7 @@ import { Bot, Building2, Check, ClipboardList, KeyRound, ListFilter, Search, Spa
 import { api } from "@/api";
 import { useApi } from "@/hooks/useApi";
 import type { AIDescription, AIMatch, AIParsed, AISearchResult } from "@/lib/types";
-import { AI_PROVIDER_TYPE_FA, PROVIDER_NAME_FA, cityName, districtName, propertyTypeLabel, transactionLabel } from "@/lib/constants";
+import { AI_PROVIDER_TYPE_FA, AI_PROVIDER_NAME_FA, cityName, districtName, propertyTypeLabel, transactionLabel } from "@/lib/constants";
 import { compactToman, faNum } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,8 @@ export default function AIPage() {
   const [tab, setTab] = useState<Tab>("search");
   const providers = useApi(() => api.aiListProviders(), [], { keys: ["ai-providers"] });
   const [provider, setProvider] = useState(DEFAULT_PROVIDER);
+  // Only engines that really exist can be chosen — nothing is relabelled or faked.
+  const implementedProviders = (providers.data?.available ?? []).filter((p) => providers.data?.details[p]?.implemented !== false);
 
   return (
     <div className="flex flex-col gap-5">
@@ -46,7 +48,7 @@ export default function AIPage() {
             </p>
             {providers.data && (
               <span className="text-caption text-muted-foreground">
-                فعلی: <b className="text-foreground">{PROVIDER_NAME_FA[providers.data.current] ?? providers.data.current}</b>
+                فعلی: <b className="text-foreground">{AI_PROVIDER_NAME_FA[providers.data.current] ?? providers.data.current}</b>
               </span>
             )}
           </div>
@@ -61,7 +63,8 @@ export default function AIPage() {
           ) : providers.data ? (
             <ul className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {Object.entries(providers.data.details).map(([name, det]) => {
-                const ready = !det.requires_api_key || det.has_key;
+                const implemented = det.implemented !== false;
+                const ready = implemented && (!det.requires_api_key || det.has_key);
                 const current = name === providers.data?.current;
                 return (
                   <li
@@ -73,8 +76,8 @@ export default function AIPage() {
                     title={det.description}
                   >
                     {ready ? <Check className="size-3.5 text-success" aria-hidden /> : <X className="size-3.5 text-danger" aria-hidden />}
-                    <span className="font-semibold">{PROVIDER_NAME_FA[name] ?? name}</span>
-                    <span className="text-muted-foreground">{AI_PROVIDER_TYPE_FA[det.type] ?? det.type}</span>
+                    <span className="font-semibold">{AI_PROVIDER_NAME_FA[name] ?? name}</span>
+                    <span className="text-muted-foreground">{implemented ? (AI_PROVIDER_TYPE_FA[det.type] ?? det.type) : "پیاده‌سازی نشده"}</span>
                     {det.requires_api_key && (
                       <KeyRound className={cn("size-3.5", det.has_key ? "text-accent" : "text-muted-foreground/60")} aria-label={det.has_key ? "کلید تنظیم شده" : "بدون کلید"} />
                     )}
@@ -84,6 +87,11 @@ export default function AIPage() {
               })}
             </ul>
           ) : null}
+          {providers.data?.note && (
+            <p className="rounded-[12px] bg-warning-soft px-3 py-2 text-caption leading-6">
+              ارائه‌دهندهٔ انتخاب‌شده ({AI_PROVIDER_NAME_FA[providers.data.requested ?? ""] ?? providers.data.requested}) هنوز پیاده‌سازی نشده؛ از موتور داخلی استفاده می‌شود.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -102,6 +110,7 @@ export default function AIPage() {
         <SearchTool
           provider={provider === DEFAULT_PROVIDER ? undefined : provider}
           providerSelect={
+            implementedProviders.length < 2 ? null : (
             <Select
               aria-label="ارائه‌دهنده"
               value={provider}
@@ -109,9 +118,10 @@ export default function AIPage() {
               className="sm:w-48"
               options={[
                 { value: DEFAULT_PROVIDER, label: "پیش‌فرض" },
-                ...(providers.data?.available ?? []).map((p) => ({ value: p, label: PROVIDER_NAME_FA[p] ?? p })),
+                ...implementedProviders.map((p) => ({ value: p, label: AI_PROVIDER_NAME_FA[p] ?? p })),
               ]}
             />
+            )
           }
         />
       )}
@@ -249,7 +259,7 @@ function ParsedView({ parsed }: { parsed: AIParsed }) {
           <ListFilter className="size-[18px] text-primary" aria-hidden /> برداشت هوش مصنوعی
         </CardTitle>
         <CardDescription>
-          تحلیل با <b>{PROVIDER_NAME_FA[parsed.parsed_by] ?? parsed.parsed_by}</b>
+          تحلیل با <b>{AI_PROVIDER_NAME_FA[parsed.parsed_by] ?? parsed.parsed_by}</b>
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -396,7 +406,7 @@ function DescribeTool() {
           <CardHeader>
             <CardTitle>{result.title}</CardTitle>
             <CardDescription className="flex items-center gap-2">
-              <Badge tone="accent">{PROVIDER_NAME_FA[result.provider] ?? result.provider}</Badge>
+              <Badge tone="accent">{AI_PROVIDER_NAME_FA[result.provider] ?? result.provider}</Badge>
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">

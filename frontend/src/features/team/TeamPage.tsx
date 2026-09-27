@@ -11,7 +11,7 @@ import { useCan, useOrgSession } from "@/hooks/useSession";
 import { useCreateParam } from "@/hooks/useCreateParam";
 import type { Invitation } from "@/lib/types";
 import { INVITATION_STATUS, roleLabel } from "@/lib/constants";
-import { faNum, relativeTime } from "@/lib/format";
+import { faNum, formatDateTime, relativeTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,6 +152,7 @@ export default function TeamPage() {
                       </p>
                       <p className="text-caption text-muted-foreground">
                         {roleTitle(inv.role_code)} · {relativeTime(inv.created_at)}
+                        {inv.status === "pending" && inv.expires_at && <> · اعتبار تا {formatDateTime(inv.expires_at)}</>}
                       </p>
                     </div>
                     <Badge tone={st.tone}>{st.label}</Badge>
@@ -222,8 +223,11 @@ const inviteSchema = z.object({
     .trim()
     .regex(/^[0-9۰-۹]{3,15}$/, "شناسه عددی تلگرام را وارد کنید"),
   role_code: z.string().min(1, "نقش را انتخاب کنید"),
+  expires_in_days: z.string(),
 });
 type InviteValues = z.infer<typeof inviteSchema>;
+
+const INVITE_EXPIRY_OPTIONS = [1, 3, 7, 14, 30].map((d) => ({ value: String(d), label: `${faNum(d)} روز` }));
 
 function InviteForm({ orgId, roleOptions, onCreated }: { orgId: number; roleOptions: { value: string; label: string; hint?: string }[]; onCreated: (token: string) => void }) {
   const {
@@ -231,12 +235,12 @@ function InviteForm({ orgId, roleOptions, onCreated }: { orgId: number; roleOpti
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<InviteValues>({ resolver: zodResolver(inviteSchema), defaultValues: { telegram_id: "", role_code: "agent" } });
+  } = useForm<InviteValues>({ resolver: zodResolver(inviteSchema), defaultValues: { telegram_id: "", role_code: "agent", expires_in_days: "7" } });
 
   const onSubmit = handleSubmit(async (v) => {
     try {
       const id = Number(v.telegram_id.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d))));
-      const inv = await api.createInvitation(orgId, { invited_telegram_id: id, role_code: v.role_code });
+      const inv = await api.createInvitation(orgId, { invited_telegram_id: id, role_code: v.role_code, expires_in_days: Number(v.expires_in_days) });
       toast.success("دعوت‌نامه ساخته شد");
       invalidate("invitations");
       onCreated(inv.token ?? "");
@@ -262,6 +266,17 @@ function InviteForm({ orgId, roleOptions, onCreated }: { orgId: number; roleOpti
                 onValueChange={field.onChange}
                 options={roleOptions.length ? roleOptions : [{ value: "agent", label: roleLabel("agent") }]}
               />
+            )}
+          />
+        )}
+      </Field>
+      <Field label="اعتبار دعوت‌نامه" hint="بعد از این مدت یا پس از یک بار استفاده، دعوت‌نامه باطل می‌شود">
+        {(id) => (
+          <Controller
+            control={control}
+            name="expires_in_days"
+            render={({ field }) => (
+              <Select id={id} value={field.value} onValueChange={field.onChange} options={INVITE_EXPIRY_OPTIONS} />
             )}
           />
         )}

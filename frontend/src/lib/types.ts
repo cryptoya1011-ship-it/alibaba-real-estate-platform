@@ -28,7 +28,7 @@ export type PropertyType =
   | "office" | "administrative" | "land" | "industrial" | "mixed_use";
 export type TransactionType = "sale" | "rent" | "exchange" | "partnership";
 export type PropertyStatus =
-  | "draft" | "pending_review" | "approved" | "published"
+  | "draft" | "pending_review" | "changes_requested" | "rejected" | "approved" | "published"
   | "reserved" | "sold" | "rented" | "archived";
 
 export type PropertyListItem = {
@@ -108,6 +108,19 @@ export type PropertyDetail = PropertyListItem & {
   /** JSON-encoded amenities object (backend column amenities_json). */
   amenities_json?: string | null;
   media?: PropertyMedia[];
+  /** Review trail (official inventory). */
+  created_by?: ID | null;
+  approved_by?: ID | null;
+  approved_at?: ISODate | null;
+  review_note?: string | null;
+};
+
+export type PropertyReviewAction = "approve" | "reject" | "request_changes";
+export type PropertyReviewPayload = {
+  action: PropertyReviewAction;
+  note?: string | null;
+  publish?: boolean;
+  version?: number;
 };
 
 export type PropertyCreatePayload = {
@@ -346,10 +359,18 @@ export type Invitation = {
   role_code: string;
   status: "pending" | "accepted" | "revoked" | "expired" | string;
   created_at: ISODate;
+  /** One-time token lifetime; null for legacy invitations. */
+  expires_at?: ISODate | null;
   token?: string;
 };
 
-export type InvitationCreatePayload = { invited_telegram_id?: number; invited_phone?: string; role_code: string };
+export type InvitationCreatePayload = {
+  invited_telegram_id?: number;
+  invited_phone?: string;
+  role_code: string;
+  /** 1–30, default 7 on the server. */
+  expires_in_days?: number;
+};
 
 export type Role = {
   id: ID;
@@ -402,12 +423,22 @@ export type AdminUser = {
 export type AIProviderDetail = {
   type: string;
   requires_api_key: boolean;
+  /** false = the connection is not written yet (never faked). */
+  implemented?: boolean;
   has_key?: boolean;
   persian?: boolean;
   description?: string;
   env?: string;
 };
-export type AIProviders = { current: string; available: string[]; details: Record<string, AIProviderDetail> };
+export type AIProviders = {
+  /** Engine actually in use. */
+  current: string;
+  /** Engine chosen in settings (may not be implemented yet). */
+  requested?: string;
+  note?: string | null;
+  available: string[];
+  details: Record<string, AIProviderDetail>;
+};
 
 export type AIParsed = {
   q?: string;
@@ -455,7 +486,28 @@ export type AIDescription = {
 export type IntegrationProviders = {
   current: Record<string, string | string[]>;
   available: Record<string, string[]>;
-  details: Record<string, { has_key: boolean; provider: string; note?: string }>;
+  details: Record<string, IntegrationProviderStatus>;
+};
+
+/** live = real connection · test = built-in test mode, nothing leaves the system · unavailable = chosen but not usable. */
+export type IntegrationMode = "live" | "test" | "unavailable";
+export type IntegrationProviderStatus = {
+  has_key: boolean;
+  provider: string;
+  note?: string;
+  mode?: IntegrationMode;
+  connected?: boolean;
+  implemented?: boolean;
+  reason?: string | null;
+};
+
+export type TelegramValidation = {
+  success: boolean;
+  mode: IntegrationMode;
+  provider?: string;
+  bot_username?: string | null;
+  bot_id?: number | null;
+  message?: string;
 };
 
 export type IntegrationResult = {

@@ -13,7 +13,7 @@ import { useCreateParam } from "@/hooks/useCreateParam";
 import { useLookups } from "@/hooks/useLookups";
 import { useDebounced } from "@/hooks/useMisc";
 import type { Deal, DealStatus, Person, PropertyListItem } from "@/lib/types";
-import { DEAL_PIPELINE, DEAL_STAGES, DEAL_TRANSITIONS, dealStageLabel } from "@/lib/constants";
+import { DEAL_PIPELINE, DEAL_STAGES, DEAL_TRANSITIONS, PERM_COMMISSION_MANAGE, dealStageLabel } from "@/lib/constants";
 import { compactToman, faNum, formatDateTime, formatToman, parseNumber, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -454,6 +454,8 @@ type Values = z.infer<typeof schema>;
 const NONE = "none";
 
 function DealForm({ properties, persons, onDone }: { properties: PropertyListItem[]; persons: Person[]; onDone: () => void }) {
+  // Commission is set by a manager only (business rules §28); consultants see the result read-only.
+  const canCommission = useCan()(PERM_COMMISSION_MANAGE);
   const {
     register,
     control,
@@ -467,7 +469,7 @@ function DealForm({ properties, persons, onDone }: { properties: PropertyListIte
   const commission = parseNumber(useWatch({ control, name: "commission_total" }));
 
   const onSubmit = handleSubmit(async (v) => {
-    const total = parseNumber(v.commission_total);
+    const total = canCommission ? parseNumber(v.commission_total) : null;
     try {
       const created = await api.createDeal({
         title: v.title,
@@ -526,8 +528,12 @@ function DealForm({ properties, persons, onDone }: { properties: PropertyListIte
         <Field label="مبلغ (تومان)" error={errors.amount?.message} hint={amount ? compactToman(amount) : undefined}>
           {(id, d) => <Input id={id} inputMode="numeric" className="tnum" aria-describedby={d} {...register("amount")} />}
         </Field>
-        <Field label="کمیسیون کل" error={errors.commission_total?.message} hint={commission ? `سهم مشاور/دفتر: ${compactToman(Math.floor(commission / 2))}` : undefined}>
-          {(id, d) => <Input id={id} inputMode="numeric" className="tnum" aria-describedby={d} {...register("commission_total")} />}
+        <Field
+          label="کمیسیون کل"
+          error={errors.commission_total?.message}
+          hint={!canCommission ? "کمیسیون را مدیر تعیین می‌کند" : commission ? `سهم مشاور/دفتر: ${compactToman(Math.floor(commission / 2))}` : undefined}
+        >
+          {(id, d) => <Input id={id} inputMode="numeric" className="tnum" aria-describedby={d} disabled={!canCommission} {...register("commission_total")} />}
         </Field>
       </div>
       <Field label="یادداشت">

@@ -9,7 +9,7 @@ import { invalidate } from "@/hooks/useApi";
 import { useOnline } from "@/hooks/useOnline";
 import { useCan } from "@/hooks/useSession";
 import type { PropertyCreatePayload, PropertyDetail, PropertyStatus, PropertyType, RegistrantType, TransactionType } from "@/lib/types";
-import { CITIES, DISTRICTS, PROPERTY_STATUSES, PROPERTY_TYPES, TRANSACTION_TYPES } from "@/lib/constants";
+import { CITIES, DISTRICTS, PERM_PROPERTY_APPROVE, PROPERTY_STATUSES, PROPERTY_TYPES, SUBMISSION_STATUSES, TRANSACTION_TYPES } from "@/lib/constants";
 import { compactToman, faNum, parseNumber, uid } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -479,7 +479,15 @@ export function PropertyForm({ onDone, initial }: { onDone: (saved?: PropertyDet
   });
 
   const districtOptions = DISTRICTS.filter((d) => d.city === cityCode);
-  const statusOptions = editing ? PROPERTY_STATUSES : PROPERTY_STATUSES.filter((s) => ["draft", "pending_review", "published"].includes(s.value));
+  // Official inventory (approve/publish/sell…) is manager-only — business rules §7.
+  const canApprove = can(PERM_PROPERTY_APPROVE);
+  const currentStatus = initial?.status;
+  const statusLocked = !canApprove && !!currentStatus && !["draft", "pending_review", "changes_requested"].includes(currentStatus);
+  const statusOptions = canApprove
+    ? editing
+      ? PROPERTY_STATUSES
+      : PROPERTY_STATUSES.filter((s) => ["draft", "pending_review", "published"].includes(s.value))
+    : PROPERTY_STATUSES.filter((s) => SUBMISSION_STATUSES.includes(s.value) || s.value === currentStatus);
   const busy = isSubmitting || uploading !== null;
 
   return (
@@ -509,12 +517,23 @@ export function PropertyForm({ onDone, initial }: { onDone: (saved?: PropertyDet
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="وضعیت" hint={editing ? undefined : "«منتشرشده» در ویترین عمومی دیده می‌شود"}>
+        <Field
+          label="وضعیت"
+          hint={
+            !canApprove
+              ? statusLocked
+                ? "وضعیت ملک تأییدشده را فقط مدیر تغییر می‌دهد"
+                : "برای ورود به موجودی رسمی، «در انتظار بررسی» را انتخاب کنید تا مدیر تأیید کند"
+              : editing
+                ? undefined
+                : "«منتشرشده» در ویترین عمومی دیده می‌شود"
+          }
+        >
           {(id) => (
             <Controller
               control={control}
               name="status"
-              render={({ field }) => <Select id={id} value={field.value} onValueChange={field.onChange} options={statusOptions} />}
+              render={({ field }) => <Select id={id} value={field.value} onValueChange={field.onChange} options={statusOptions} disabled={statusLocked} />}
             />
           )}
         </Field>

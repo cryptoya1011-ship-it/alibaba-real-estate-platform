@@ -26,6 +26,8 @@ export const TRANSACTION_TYPES: Option<TransactionType>[] = [
 export const PROPERTY_STATUSES: Option<PropertyStatus>[] = [
   { value: "draft", label: "پیش‌نویس" },
   { value: "pending_review", label: "در انتظار بررسی" },
+  { value: "changes_requested", label: "نیازمند اصلاح" },
+  { value: "rejected", label: "ردشده" },
   { value: "approved", label: "تأییدشده" },
   { value: "published", label: "منتشرشده" },
   { value: "reserved", label: "رزروشده" },
@@ -127,6 +129,8 @@ export const VISIT_STATUS_OPTIONS = ["scheduled", "done", "rescheduled", "no_sho
 export const PROPERTY_STATUS_TONE: Record<string, Tone> = {
   draft: "neutral",
   pending_review: "warning",
+  changes_requested: "warning",
+  rejected: "danger",
   approved: "info",
   published: "success",
   reserved: "accent",
@@ -151,8 +155,15 @@ export const INVITATION_STATUS: Record<string, { label: string; tone: Tone }> = 
 export const SYSTEM_ROLE_LABELS: Record<string, string> = {
   organization_admin: "مدیر سازمان",
   branch_admin: "مدیر شعبه",
+  manager: "مدیر",
   agent: "مشاور املاک",
+  observer: "ناظر (فقط مشاهده)",
 };
+
+/** Statuses a consultant may choose; everything else is the official inventory (manager only). */
+export const SUBMISSION_STATUSES: PropertyStatus[] = ["draft", "pending_review"];
+export const PERM_PROPERTY_APPROVE = "property:approve";
+export const PERM_COMMISSION_MANAGE = "commission:manage";
 
 /** All permission codes (mirror of backend core/permissions.py ALL_PERMISSIONS). */
 export const PERMISSION_GROUPS: { key: string; label: string; items: { code: string; label: string }[] }[] = [
@@ -179,6 +190,7 @@ export const PERMISSION_GROUPS: { key: string; label: string; items: { code: str
       { code: "property:delete", label: "حذف ملک" },
       { code: "property:address:read", label: "مشاهده آدرس دقیق" },
       { code: "property:owner:read", label: "مشاهده اطلاعات مالک" },
+      { code: "property:approve", label: "تأیید، رد و انتشار ملک (موجودی رسمی)" },
       { code: "favorite:manage", label: "علاقه‌مندی‌ها" },
       { code: "saved_search:manage", label: "جستجوهای ذخیره‌شده" },
     ],
@@ -261,6 +273,8 @@ export const INTEGRATION_PROVIDER_META: Record<string, { label: string; hint: st
 export const PROVIDER_NAME_FA: Record<string, string> = {
   mock: "آزمایشی",
   osm: "OpenStreetMap",
+  haversine: "محاسبهٔ داخلی",
+  telegram: "ربات تلگرام",
   telegram_bot: "ربات تلگرام",
   kavenegar: "کاوه‌نگار",
   zarinpal: "زرین‌پال",
@@ -271,6 +285,9 @@ export const PROVIDER_NAME_FA: Record<string, string> = {
   claude: "Claude",
   local: "محلی",
 };
+
+/** AI engines: "mock" is the real built-in Persian rule-based engine, not a test stub. */
+export const AI_PROVIDER_NAME_FA: Record<string, string> = { ...PROVIDER_NAME_FA, mock: "موتور داخلی", local: "مدل محلی" };
 
 export const AI_PROVIDER_TYPE_FA: Record<string, string> = {
   "rule-based": "قانون‌محور",

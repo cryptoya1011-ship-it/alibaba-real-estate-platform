@@ -3,7 +3,7 @@ import type { AIMatch } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Code, ScoreBar, StaggerItem, StaggerList } from "@/components/ui/misc";
 import { EmptyState } from "@/components/ui/states";
-import { cityName, propertyTypeLabel, transactionLabel, PROVIDER_NAME_FA } from "@/lib/constants";
+import { cityName, propertyTypeLabel, transactionLabel, AI_PROVIDER_NAME_FA } from "@/lib/constants";
 import { compactToman, faNum } from "@/lib/format";
 
 /** Match results (request↔property) with animated score bars + Persian reasons. */
@@ -59,7 +59,7 @@ export function MatchList({ matches, emptyHint }: { matches: AIMatch[]; emptyHin
               ))}
             </ul>
           )}
-          <p className="mt-2 text-[11px] text-muted-foreground/80">موتور: {PROVIDER_NAME_FA[m.provider] ?? m.provider}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground/80">موتور: {AI_PROVIDER_NAME_FA[m.provider] ?? m.provider}</p>
         </StaggerItem>
       ))}
     </StaggerList>

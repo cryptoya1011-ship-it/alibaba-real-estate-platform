@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  Check,
+  ClipboardCheck,
   Copy,
   ExternalLink,
   FileText,
@@ -11,6 +13,7 @@ import {
   MapPin,
   Pencil,
   Repeat,
+  Send,
   Sparkles,
   Star,
   Trash2,
@@ -21,16 +24,17 @@ import { toast } from "sonner";
 import { api, ApiError } from "@/api";
 import { useApi, invalidate } from "@/hooks/useApi";
 import { useCan } from "@/hooks/useSession";
-import type { AIDescription, AIMatch, PropertyDetail } from "@/lib/types";
+import type { AIDescription, AIMatch, PropertyDetail, PropertyReviewAction } from "@/lib/types";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/components/ui/confirm";
 import { Code, CopyButton, KeyValue, copyText } from "@/components/ui/misc";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState, errorMessage } from "@/components/ui/states";
-import { PROPERTY_STATUSES, PROPERTY_STATUS_TONE, propertyStatusLabel, propertyTypeLabel, transactionLabel } from "@/lib/constants";
+import { PERM_PROPERTY_APPROVE, PROPERTY_STATUSES, PROPERTY_STATUS_TONE, propertyStatusLabel, propertyTypeLabel, transactionLabel } from "@/lib/constants";
 import { compactToman, faNum, formatDate, formatToman } from "@/lib/format";
 import { MatchList } from "@/features/ai/MatchList";
 import { publicUrl } from "./PropertyCard";
@@ -116,6 +120,7 @@ function DetailBody({
   const [autoRan, setAutoRan] = useState(false);
   const canUpdate = can("property:update");
   const canDelete = can("property:delete");
+  const canApprove = can(PERM_PROPERTY_APPROVE);
 
   const suggest = async () => {
     setDescLoading(true);
@@ -419,7 +424,20 @@ function DetailBody({
         </div>
       )}
 
-      {canUpdate && (
+      <ReviewPanel
+        p={p}
+        canApprove={canApprove}
+        canUpdate={canUpdate}
+        saving={saving}
+        onSubmitForReview={() => update({ status: "pending_review" }, "ملک برای بررسی مدیر ارسال شد")}
+        onReviewed={(updated) => {
+          setData({ ...p, ...updated });
+          invalidate("properties", "public", "dashboard", "notifications");
+        }}
+        onConflict={() => void reload()}
+      />
+
+      {canApprove && (
         <div className="flex flex-col gap-2 rounded-[16px] bg-card-2 p-3.5 hairline">
           <p className="text-caption font-semibold">تغییر سریع وضعیت</p>
           <div className="flex items-center gap-2">
@@ -444,6 +462,104 @@ function DetailBody({
         </div>
         {matches && <MatchList matches={matches} emptyHint="برای این ملک درخواست مشتری مطابقی ثبت نشده است." />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Official-inventory review (business rules §7): the consultant submits, a manager
+ * approves / rejects / requests changes. Hidden when there is nothing to do.
+ */
+function ReviewPanel({
+  p,
+  canApprove,
+  canUpdate,
+  saving,
+  onSubmitForReview,
+  onReviewed,
+  onConflict,
+}: {
+  p: PropertyDetail;
+  canApprove: boolean;
+  canUpdate: boolean;
+  saving: boolean;
+  onSubmitForReview: () => void;
+  onReviewed: (updated: PropertyDetail) => void;
+  onConflict: () => void;
+}) {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState<PropertyReviewAction | "publish" | null>(null);
+  const reviewable = p.status === "pending_review" || p.status === "changes_requested";
+  const canSubmit = !canApprove && canUpdate && (p.status === "draft" || p.status === "changes_requested");
+  const showNote = !!p.review_note && (p.status === "changes_requested" || p.status === "rejected");
+
+  if (!showNote && !canSubmit && !(canApprove && reviewable) && p.status !== "pending_review") return null;
+
+  const review = async (action: PropertyReviewAction, publish = false) => {
+    if (action !== "approve" && !note.trim()) {
+      toast.warning("برای رد یا درخواست اصلاح، توضیح بنویسید");
+      return;
+    }
+    setBusy(publish ? "publish" : action);
+    try {
+      const updated = await api.reviewProperty(p.id, { action, note: note.trim() || null, publish, version: p.version });
+      onReviewed(updated);
+      setNote("");
+      toast.success(
+        action === "approve" ? (publish ? "ملک تأیید و منتشر شد" : "ملک تأیید شد") : action === "reject" ? "ملک رد شد" : "درخواست اصلاح برای ثبت‌کننده ارسال شد",
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "VERSION_CONFLICT") {
+        toast.warning("این ملک هم‌زمان تغییر کرده بود؛ اطلاعات تازه شد");
+        onConflict();
+      } else toast.error(errorMessage(err, "ثبت نتیجهٔ بررسی ناموفق بود"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3 rounded-[16px] border border-warning/30 bg-warning-soft p-3.5">
+      <div className="flex items-center gap-2">
+        <ClipboardCheck className="size-5 text-warning" aria-hidden />
+        <p className="font-semibold">بررسی ملک</p>
+        <Badge tone={PROPERTY_STATUS_TONE[p.status] ?? "neutral"}>{propertyStatusLabel(p.status)}</Badge>
+      </div>
+
+      {showNote && (
+        <p className="rounded-[12px] bg-card/80 p-3 text-body-sm leading-7">
+          <span className="font-semibold">نظر مدیر: </span>
+          {p.review_note}
+        </p>
+      )}
+
+      {p.status === "pending_review" && !canApprove && <p className="text-body-sm text-muted-foreground">در انتظار تأیید مدیر است.</p>}
+
+      {canSubmit && (
+        <Button onClick={onSubmitForReview} loading={saving}>
+          <Send aria-hidden /> ارسال برای بررسی
+        </Button>
+      )}
+
+      {canApprove && reviewable && (
+        <>
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="توضیح برای ثبت‌کننده (برای رد یا اصلاح الزامی است)" aria-label="توضیح بررسی" />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Button onClick={() => review("approve", true)} loading={busy === "publish"} disabled={!!busy}>
+              <Check aria-hidden /> تأیید و انتشار
+            </Button>
+            <Button variant="secondary" onClick={() => review("approve")} loading={busy === "approve"} disabled={!!busy}>
+              تأیید
+            </Button>
+            <Button variant="outline" onClick={() => review("request_changes")} loading={busy === "request_changes"} disabled={!!busy}>
+              درخواست اصلاح
+            </Button>
+            <Button variant="danger" onClick={() => review("reject")} loading={busy === "reject"} disabled={!!busy}>
+              رد
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

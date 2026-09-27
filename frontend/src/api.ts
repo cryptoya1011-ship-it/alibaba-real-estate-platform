@@ -36,6 +36,8 @@ import type {
   PropertyCreatePayload,
   PropertyDetail,
   PropertyListItem,
+  PropertyReviewPayload,
+  TelegramValidation,
   PropertyUpdatePayload,
   PublicProperty,
   QueryParams,
@@ -245,6 +247,9 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(payload),
     }),
+  /** Manager decision on a submitted property (approve / reject / request_changes). */
+  reviewProperty: (id: number, payload: PropertyReviewPayload) =>
+    request<PropertyDetail>(`/properties/${id}/review`, { method: "POST", body: JSON.stringify(payload) }),
 
   // CRM — Phase 6
   listPersons: (params: QueryParams = {}) => request<Person[]>(`/persons${toQuery(params)}`),
@@ -356,6 +361,9 @@ export const api = {
 
   // Integrations Phase 15
   intListProviders: () => request<IntegrationProviders>(`/integrations/providers`),
+  /** Real connection check (Telegram getMe); reports test mode honestly. */
+  intTelegramValidate: () =>
+    request<TelegramValidation>(`/integrations/telegram/validate`, { method: "POST" }),
   intTelegramSend: (chat_id: string, text: string) =>
     request<IntegrationResult>(`/integrations/telegram/send`, { method: "POST", body: JSON.stringify({ chat_id, text }) }),
   intTelegramSendProperty: (propertyId: number, chat_id: string) =>

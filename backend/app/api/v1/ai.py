@@ -19,7 +19,7 @@ from app.api.deps import get_tenant_context
 from app.core.responses import ok
 from app.core.tenant import TenantContext
 from app.db.session import get_db
-from app.modules.ai.adapter import get_provider, providers_status
+from app.modules.ai.adapter import providers_status
 from app.modules.ai.service import AIService
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -55,12 +55,11 @@ async def parse_search(
     """
     service = AIService(session)
 
-    # Allow override provider via payload for testing
-    if payload.use_provider:
-        import os
+    # `use_provider` is accepted for compatibility but no longer mutates the process-wide
 
-        os.environ["AI_PROVIDER"] = payload.use_provider
-        service.provider = get_provider()
+    # AI_PROVIDER (that let any request switch the engine for everyone). Only implemented
+
+    # engines run — see ADR-0019.
 
     result = await service.parse_search_query(payload.text)
     return ok(result)
@@ -129,12 +128,7 @@ async def parse_and_execute_search(
 
     service = AIService(session)
 
-    if payload.use_provider:
-        import os
-
-        os.environ["AI_PROVIDER"] = payload.use_provider
-        service.provider = get_provider()
-
+    # `use_provider` no longer mutates process-wide settings (ADR-0019).
     parsed = await service.parse_search_query(payload.text)
     filters = parsed.get("filters", {})
 
