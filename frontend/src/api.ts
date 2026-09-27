@@ -163,7 +163,10 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
       }
       // Only the request made with the *current* token may end the session;
       // a late 401 for an old token must not wipe a freshly issued one.
-      if (accessToken === tokenUsed) unauthorizedListeners.forEach((l) => l(err));
+      if (accessToken === tokenUsed) {
+        console.warn(`[auth] session ended by ${options.method ?? "GET"} ${path}: ${err.message}`);
+        unauthorizedListeners.forEach((l) => l(err));
+      }
     }
     throw err;
   }

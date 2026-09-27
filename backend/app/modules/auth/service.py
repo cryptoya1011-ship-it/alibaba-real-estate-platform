@@ -80,6 +80,10 @@ class AuthService:
             if organization_id not in available_ids and not user.is_super_admin:
                 # Do not disclose whether the organization exists.
                 raise NotFoundError()
+            if organization_id not in available_ids and await self.organizations.get(organization_id) is None:
+                # Super admins may enter any organization — but only one that exists
+                # (a stale id from an old browser session must not create a ghost tenant).
+                raise NotFoundError()
             active_org = organization_id
         elif len(orgs) == 1:
             active_org = orgs[0].id

@@ -24,7 +24,7 @@ export function AppShell() {
   const moreActive = location.pathname.startsWith("/app/") && !primary.some((p) => p !== "/app" && location.pathname.startsWith(p));
 
   return (
-    <UnreadProvider enabled={!!session?.organization_id}>
+    <UnreadProvider enabled={!!session?.organization_id} orgId={session?.organization_id ?? null}>
       <div className="flex min-h-dvh">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -61,8 +61,10 @@ export function AppShell() {
 
           <main className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-3 sm:px-5 lg:pb-10 lg:pt-6">
             <StatusBanners />
+            {/* Keyed by organization too: switching/creating an org remounts the page so
+                nothing from the previous organization stays on screen. */}
             <motion.div
-              key={location.pathname}
+              key={`${session?.organization_id ?? "none"}:${location.pathname}`}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, ease: "easeOut" }}

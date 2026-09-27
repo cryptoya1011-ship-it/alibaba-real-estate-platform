@@ -16,12 +16,38 @@ const FEATURES = [
   { icon: Sparkles, text: "جستجو و تطبیق هوشمند فارسی" },
 ];
 
+// Circuit breaker: if the session keeps getting rejected right after an automatic
+// login (401 → login → 401 …) stop logging in automatically and let the user
+// press the button instead of bouncing between screens forever.
+const AUTO_LOGIN_KEY = "arep_auto_login";
+const AUTO_LOGIN_WINDOW_MS = 60_000;
+const AUTO_LOGIN_MAX = 3;
+
+function recentAutoLogins(): number[] {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(AUTO_LOGIN_KEY) ?? "[]") as unknown;
+    const now = Date.now();
+    return Array.isArray(raw) ? raw.filter((t): t is number => typeof t === "number" && now - t < AUTO_LOGIN_WINDOW_MS) : [];
+  } catch {
+    return [];
+  }
+}
+
+function recordAutoLogin(list: number[]) {
+  try {
+    sessionStorage.setItem(AUTO_LOGIN_KEY, JSON.stringify([...list, Date.now()]));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function LoginPage() {
   const { status, session, login, insideTelegram, userLoggedOut } = useSession();
   const [params] = useSearchParams();
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const attempted = useRef(false);
+  const [paused, setPaused] = useState(false);
   const next = params.get("next");
 
   const doLogin = async () => {
@@ -40,7 +66,14 @@ export function LoginPage() {
   useEffect(() => {
     if (attempted.current || status === "authenticated") return;
     attempted.current = true;
-    if (insideTelegram || !userLoggedOut) void doLogin();
+    if (!insideTelegram && userLoggedOut) return;
+    const recent = recentAutoLogins();
+    if (recent.length >= AUTO_LOGIN_MAX) {
+      setPaused(true);
+      return;
+    }
+    recordAutoLogin(recent);
+    void doLogin();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -88,6 +121,13 @@ export function LoginPage() {
           <p className="mt-1 text-body text-muted-foreground">
             {insideTelegram ? "ورود امن با حساب تلگرام شما انجام می‌شود." : "برای ادامه وارد حساب کاربری شوید."}
           </p>
+
+          {paused && error == null && (
+            <div role="status" className="mt-5 rounded-[14px] border border-warning/25 bg-warning-soft px-3.5 py-3 text-body">
+              <p className="font-semibold text-warning">ورود خودکار متوقف شد</p>
+              <p className="text-caption text-muted-foreground">نشست چند بار پشت‌سرهم رد شد. برای ادامه، دکمهٔ ورود را بزنید.</p>
+            </div>
+          )}
 
           {error != null && (
             <div role="alert" className="mt-5 rounded-[14px] border border-danger/25 bg-danger-soft px-3.5 py-3 text-body">

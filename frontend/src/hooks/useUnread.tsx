@@ -5,7 +5,7 @@ type UnreadContextValue = { unread: number; refresh: () => void; setUnread: (n: 
 const UnreadContext = createContext<UnreadContextValue>({ unread: 0, refresh: () => {}, setUnread: () => {} });
 
 /** Live unread-notification badge: polls every 30s and on "notifications" invalidation. */
-export function UnreadProvider({ children, enabled }: { children: ReactNode; enabled: boolean }) {
+export function UnreadProvider({ children, enabled, orgId = null }: { children: ReactNode; enabled: boolean; orgId?: number | null }) {
   const [unread, setUnread] = useState(0);
 
   const refresh = useCallback(() => {
@@ -19,6 +19,7 @@ export function UnreadProvider({ children, enabled }: { children: ReactNode; ena
   }, [enabled]);
 
   useEffect(() => {
+    setUnread(0);
     if (!enabled) return;
     refresh();
     const t = setInterval(refresh, 30_000);
@@ -34,7 +35,7 @@ export function UnreadProvider({ children, enabled }: { children: ReactNode; ena
       window.removeEventListener("arep:invalidate", onInvalidate);
       document.removeEventListener("visibilitychange", onFocus);
     };
-  }, [enabled, refresh]);
+  }, [enabled, refresh, orgId]);
 
   return <UnreadContext.Provider value={{ unread, refresh, setUnread }}>{children}</UnreadContext.Provider>;
 }
