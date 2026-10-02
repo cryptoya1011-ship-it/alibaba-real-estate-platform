@@ -119,6 +119,34 @@ docker compose exec backend python -m app.cli make-super-admin 677873313
 
 ---
 
+## ورود موقت با نام کاربری و رمز عبور (بیرون از تلگرام)
+
+برای اینکه بتوانید سامانه را از مرورگر عادی بررسی کنید (ADR-0023):
+
+۱. این سه خط را به `.env` ریشهٔ پروژه اضافه کنید. رمز باید حداقل ۱۰ نویسه باشد و `LOGIN_TELEGRAM_ID` شناسهٔ عددی تلگرام خودتان است، تا با همان حساب و همان دسترسی‌ها وارد شوید:
+
+```env
+LOGIN_USERNAME=admin
+LOGIN_PASSWORD=یک-رمز-قوی-و-طولانی
+LOGIN_TELEGRAM_ID=123456789
+```
+
+۲. سامانه را با فایل اضافهٔ ورود با رمز روشن کنید. اگر از HTTPS هم استفاده می‌کنید، فایل `deploy/docker-compose.https.yml` را هم مثل قبل اضافه کنید:
+
+```bash
+docker compose -f docker-compose.yml -f deploy/docker-compose.password-login.yml up -d --build
+```
+
+حالا صفحهٔ ورود در مرورگر فرم «نام کاربری / رمز عبور» نشان می‌دهد. داخل تلگرام هیچ چیزی تغییر نمی‌کند.
+
+**برگرداندن به حالت اول (فقط تلگرام):** همان دستور را بدون `-f deploy/docker-compose.password-login.yml` اجرا کنید:
+
+```bash
+docker compose up -d --build
+```
+
+---
+
 ## به‌روزرسانی بعد از تغییر کد
 
 ```bash

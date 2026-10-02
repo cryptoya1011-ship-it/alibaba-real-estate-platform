@@ -16,6 +16,12 @@ class DevLoginRequest(BaseModel):
     organization_id: int | None = None
 
 
+class PasswordLoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=200)
+    organization_id: int | None = None
+
+
 class OrganizationBrief(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,6 +1,9 @@
 """Authentication: Telegram proves identity; AREP decides tenant/roles/permissions."""
 from __future__ import annotations
 
+import asyncio
+import hmac
+import logging
 import uuid
 
 from sqlalchemy import select
@@ -23,6 +26,7 @@ from app.modules.rbac.service import RbacService
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
 
+logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(self, session: AsyncSession) -> None:
@@ -62,6 +66,23 @@ class AuthService:
         if not settings.ALLOW_DEV_LOGIN or settings.is_production:
             raise UnauthorizedError("ورود آزمایشی غیرفعال است")
         user = await self.upsert_telegram_user({"id": telegram_id, "first_name": first_name or "Dev"})
+        return await self.issue_token(user, organization_id)
+
+    async def password_login(self, username: str, password: str, organization_id: int | None):
+        """Temporary username/password login (ADR-0023). Constant-time comparison."""
+        if not settings.PASSWORD_LOGIN_ENABLED:
+            raise UnauthorizedError("ورود با رمز عبور غیرفعال است")
+        user_ok = hmac.compare_digest(username.strip().encode(), (settings.LOGIN_USERNAME or "").encode())
+        pass_ok = hmac.compare_digest(password.encode(), (settings.LOGIN_PASSWORD or "").encode())
+        if not (user_ok and pass_ok):
+            await asyncio.sleep(0.5)  # slow down guessing (auth routes are also rate-limited)
+            logger.warning("password login failed")
+            raise UnauthorizedError("نام کاربری یا رمز عبور اشتباه است")
+        user = await self.users.get_by_telegram_id(int(settings.LOGIN_TELEGRAM_ID))
+        if user is None:
+            user = await self.users.create(telegram_id=int(settings.LOGIN_TELEGRAM_ID), first_name=username.strip(), language_code="fa")
+        if not user.is_active:
+            raise ForbiddenError("حساب کاربری شما غیرفعال است")
         return await self.issue_token(user, organization_id)
 
     # -- token ----------------------------------------------------------

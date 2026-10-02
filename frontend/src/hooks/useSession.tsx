@@ -6,6 +6,10 @@ import { uid } from "@/lib/format";
 
 const SESSION_KEY = "arep_session";
 const LOGGED_OUT_KEY = "arep_logged_out";
+/** "password" when the temporary username/password login was used (ADR-0023). */
+const LOGIN_METHOD_KEY = "arep_login_method";
+
+export type PasswordCredentials = { username: string; password: string };
 
 type Status = "loading" | "authenticated" | "unauthenticated";
 
@@ -13,8 +17,11 @@ type SessionContextValue = {
   session: Session | null;
   status: Status;
   insideTelegram: boolean;
-  /** Telegram initData login inside Telegram; devLogin(1000001) outside. */
-  login: () => Promise<Session>;
+  /**
+   * Telegram initData login inside Telegram; devLogin(1000001) outside — or,
+   * when credentials are given (temporary password login, ADR-0023), passwordLogin.
+   */
+  login: (credentials?: PasswordCredentials) => Promise<Session>;
   logout: () => void;
   selectOrganization: (id: number) => Promise<Session>;
   createOrganization: (name: string, slug: string) => Promise<Session>;
@@ -115,6 +122,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           next = await api.loginTelegram(tg.initData);
         }
       } else {
+        // Password sessions cannot re-login silently (the password is never stored).
+        if (localStorage.getItem(LOGIN_METHOD_KEY) === "password") return false;
         next = await api.devLogin(1000001);
         if (orgId && next.organization_id !== orgId && next.organizations.some((o) => o.id === orgId)) {
           setToken(next.access_token);
@@ -135,11 +144,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => setReauthHandler(null);
   }, [apply]);
 
-  const login = useCallback(async () => {
+  const login = useCallback(async (credentials?: PasswordCredentials) => {
     setStatus("loading");
     try {
       const tg = getWebApp();
-      const next = isInsideTelegram() ? await api.loginTelegram(tg!.initData) : await api.devLogin(1000001);
+      let next: Session;
+      if (isInsideTelegram()) next = await api.loginTelegram(tg!.initData);
+      else if (credentials) next = await api.passwordLogin(credentials.username, credentials.password);
+      else next = await api.devLogin(1000001);
+      try {
+        if (credentials && !isInsideTelegram()) localStorage.setItem(LOGIN_METHOD_KEY, "password");
+        else localStorage.removeItem(LOGIN_METHOD_KEY);
+      } catch {
+        /* ignore */
+      }
       return apply(next);
     } catch (err) {
       setStatus("unauthenticated");

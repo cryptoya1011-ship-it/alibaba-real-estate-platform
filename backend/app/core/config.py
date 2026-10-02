@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     # Dev-only shortcut to obtain a token without Telegram. Never in production.
     ALLOW_DEV_LOGIN: bool = True
 
+    # TEMPORARY username/password login for checking a deployment outside Telegram
+    # (ADR-0023). Off by default. Signs in as the account whose Telegram ID is
+    # LOGIN_TELEGRAM_ID, so data and roles are the same as the Telegram login.
+    PASSWORD_LOGIN_ENABLED: bool = False
+    LOGIN_USERNAME: str | None = None
+    LOGIN_PASSWORD: str | None = None
+    LOGIN_TELEGRAM_ID: int | None = None
+
     CORS_ORIGINS: str = "*"
 
     # Property media (photos). Files live on local disk under MEDIA_ROOT and are
@@ -85,6 +93,11 @@ class Settings(BaseSettings):
                 raise ValueError("ALLOW_DEV_LOGIN must be false in production")
             if not self.TELEGRAM_BOT_TOKEN:
                 raise ValueError("TELEGRAM_BOT_TOKEN must be set in production")
+        if self.PASSWORD_LOGIN_ENABLED:
+            if not self.LOGIN_USERNAME or not self.LOGIN_TELEGRAM_ID:
+                raise ValueError("PASSWORD_LOGIN_ENABLED needs LOGIN_USERNAME and LOGIN_TELEGRAM_ID")
+            if not self.LOGIN_PASSWORD or len(self.LOGIN_PASSWORD) < 10:
+                raise ValueError("LOGIN_PASSWORD must be at least 10 characters")
         return self
 
 

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Building2, CalendarClock, Handshake, LogIn, Send, ShieldCheck, Sparkles } from "lucide-react";
-import { useSession } from "@/hooks/useSession";
+import { api, type AuthMethods } from "@/api";
+import { useSession, type PasswordCredentials } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/input";
 import { errorMessage } from "@/components/ui/states";
 import { Brand } from "@/components/layout/Brand";
 import { ThemeToggle } from "@/components/layout/TopbarActions";
@@ -49,12 +51,34 @@ export function LoginPage() {
   const attempted = useRef(false);
   const [paused, setPaused] = useState(false);
   const next = params.get("next");
+  // Outside Telegram ask the server which login methods it accepts. When the
+  // temporary password login is on (ADR-0023) show the form instead of the dev login.
+  // If the server can't answer, keep the original flow (dev login).
+  const [methods, setMethods] = useState<AuthMethods | null>(null);
+  const [methodsReady, setMethodsReady] = useState(insideTelegram);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const passwordMode = !insideTelegram && methods?.password === true;
+  const noBrowserLogin = !insideTelegram && methods != null && !methods.password && !methods.dev;
 
-  const doLogin = async () => {
+  useEffect(() => {
+    if (insideTelegram) return;
+    let alive = true;
+    api
+      .authMethods()
+      .then((m) => alive && setMethods(m))
+      .catch(() => undefined)
+      .finally(() => alive && setMethodsReady(true));
+    return () => {
+      alive = false;
+    };
+  }, [insideTelegram]);
+
+  const doLogin = async (credentials?: PasswordCredentials) => {
     setBusy(true);
     setError(null);
     try {
-      await login();
+      await login(credentials);
     } catch (err) {
       setError(err);
     } finally {
@@ -62,11 +86,18 @@ export function LoginPage() {
     }
   };
 
-  // Auto-login once: inside Telegram (initData) or outside (dev login) — unless the user just logged out.
+  const submitPassword = (e: FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password) return;
+    void doLogin({ username: username.trim(), password });
+  };
+
+  // Auto-login once: inside Telegram (initData) or outside (dev login) — unless the user just logged out
+  // or the server wants a username/password.
   useEffect(() => {
-    if (attempted.current || status === "authenticated") return;
+    if (!methodsReady || attempted.current || status === "authenticated") return;
     attempted.current = true;
-    if (!insideTelegram && userLoggedOut) return;
+    if (!insideTelegram && (userLoggedOut || passwordMode || noBrowserLogin)) return;
     const recent = recentAutoLogins();
     if (recent.length >= AUTO_LOGIN_MAX) {
       setPaused(true);
@@ -75,13 +106,15 @@ export function LoginPage() {
     recordAutoLogin(recent);
     void doLogin();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [methodsReady]);
 
   if (status === "authenticated" && session) {
     const target = next && next.startsWith("/") ? next : "/app";
     return <Navigate to={session.organization_id ? target : `/orgs${next ? `?next=${encodeURIComponent(next)}` : ""}`} replace />;
   }
-  if (busy && !error && !userLoggedOut) return <FullScreenLoader label={insideTelegram ? "ورود با تلگرام…" : "در حال ورود…"} />;
+  if (!methodsReady) return <FullScreenLoader label="در حال آماده‌سازی…" />;
+  if (busy && !error && !userLoggedOut && !passwordMode)
+    return <FullScreenLoader label={insideTelegram ? "ورود با تلگرام…" : "در حال ورود…"} />;
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-hero">
@@ -89,7 +122,12 @@ export function LoginPage() {
         <ThemeToggle />
       </div>
       <div className="mx-auto grid min-h-dvh max-w-5xl items-center gap-10 px-5 py-12 lg:grid-cols-2">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="hidden flex-col gap-6 lg:flex">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="hidden flex-col gap-6 lg:flex"
+        >
           <Brand />
           <h1 className="text-display-lg font-extrabold leading-[1.5] tracking-tight">
             دفتر املاک‌تان را
@@ -119,7 +157,11 @@ export function LoginPage() {
           </div>
           <h2 className="text-display font-bold">خوش آمدید</h2>
           <p className="mt-1 text-body text-muted-foreground">
-            {insideTelegram ? "ورود امن با حساب تلگرام شما انجام می‌شود." : "برای ادامه وارد حساب کاربری شوید."}
+            {insideTelegram
+              ? "ورود امن با حساب تلگرام شما انجام می‌شود."
+              : passwordMode
+                ? "نام کاربری و رمز عبور را وارد کنید."
+                : "برای ادامه وارد حساب کاربری شوید."}
           </p>
 
           {paused && error == null && (
@@ -136,17 +178,62 @@ export function LoginPage() {
             </div>
           )}
 
-          <div className="mt-6 flex flex-col gap-3">
-            <Button size="lg" block onClick={doLogin} loading={busy}>
-              {insideTelegram ? <Send aria-hidden /> : <LogIn aria-hidden />}
-              {insideTelegram ? "ورود با تلگرام" : "ورود (حالت توسعه)"}
-            </Button>
-            {!insideTelegram && (
-              <p className="text-center text-caption text-muted-foreground">
-                خارج از تلگرام، ورود آزمایشی با شناسه <span dir="ltr" className="font-mono">1000001</span> انجام می‌شود.
-              </p>
-            )}
-          </div>
+          {passwordMode ? (
+            <form className="mt-6 flex flex-col gap-4" onSubmit={submitPassword} noValidate>
+              <Field label="نام کاربری" required>
+                {(id, d) => (
+                  <Input
+                    id={id}
+                    aria-describedby={d}
+                    ltr
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                )}
+              </Field>
+              <Field label="رمز عبور" required>
+                {(id, d) => (
+                  <Input
+                    id={id}
+                    aria-describedby={d}
+                    ltr
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                )}
+              </Field>
+              <Button type="submit" size="lg" block loading={busy} disabled={!username.trim() || !password}>
+                <LogIn aria-hidden />
+                ورود
+              </Button>
+            </form>
+          ) : noBrowserLogin ? (
+            <div role="status" className="mt-6 rounded-[14px] border border-border bg-muted/40 px-3.5 py-3 text-body">
+              <p className="font-semibold">ورود فقط از داخل تلگرام</p>
+              <p className="text-caption text-muted-foreground">برنامه را از داخل ربات تلگرام دفتر باز کنید.</p>
+            </div>
+          ) : (
+            <div className="mt-6 flex flex-col gap-3">
+              <Button size="lg" block onClick={() => void doLogin()} loading={busy}>
+                {insideTelegram ? <Send aria-hidden /> : <LogIn aria-hidden />}
+                {insideTelegram ? "ورود با تلگرام" : "ورود (حالت توسعه)"}
+              </Button>
+              {!insideTelegram && (
+                <p className="text-center text-caption text-muted-foreground">
+                  خارج از تلگرام، ورود آزمایشی با شناسه{" "}
+                  <span dir="ltr" className="font-mono">
+                    1000001
+                  </span>{" "}
+                  انجام می‌شود.
+                </p>
+              )}
+            </div>
+          )}
           <div className="mt-6 flex items-center justify-center gap-2 border-t border-border pt-4 text-caption text-muted-foreground">
             <ShieldCheck className="size-4 text-primary" aria-hidden />
             جداسازی کامل داده هر سازمان

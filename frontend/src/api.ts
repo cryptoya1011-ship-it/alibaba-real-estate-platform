@@ -207,6 +207,8 @@ export type Session = {
   organizations: { id: number; name: string; slug: string; is_owner: boolean }[];
 };
 
+export type AuthMethods = { telegram: boolean; password: boolean; dev: boolean };
+
 export const api = {
   health: () => request<{ status: string; env: string }>("/health"),
   loginTelegram: (initData: string, organizationId?: number) =>
@@ -218,6 +220,14 @@ export const api = {
     request<Session>("/auth/dev-login", {
       method: "POST",
       body: JSON.stringify({ telegram_id: telegramId, first_name: "Dev" }),
+    }),
+  /** Login methods the server accepts (no secrets). */
+  authMethods: () => request<AuthMethods>("/auth/methods"),
+  /** TEMPORARY username/password login (server flag PASSWORD_LOGIN_ENABLED; ADR-0023). */
+  passwordLogin: (username: string, password: string, organizationId?: number) =>
+    request<Session>("/auth/password", {
+      method: "POST",
+      body: JSON.stringify({ username, password, organization_id: organizationId ?? null }),
     }),
   selectOrganization: (organizationId: number) =>
     request<Session>("/auth/select-organization", {

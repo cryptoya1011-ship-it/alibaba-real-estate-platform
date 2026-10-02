@@ -4,6 +4,23 @@
 
 ---
 
+## [Unreleased] — 2026-10-02 — Temporary password login
+
+### Added
+- **TEMPORARY username/password login outside Telegram (ADR-0023), off by default.**
+  - Settings: `PASSWORD_LOGIN_ENABLED`, `LOGIN_USERNAME`, `LOGIN_PASSWORD` (min 10 characters), `LOGIN_TELEGRAM_ID`. You log in as that Telegram account, with the same roles and data.
+  - `POST /api/v1/auth/password` uses a constant-time comparison and the existing auth rate limit.
+  - Public `GET /api/v1/auth/methods` returns `{telegram, password, dev}`.
+  - The login page shows a username/password form outside Telegram when the flag is on; nothing changes inside Telegram.
+  - Docker overlay: `deploy/docker-compose.password-login.yml`.
+  - To revert, run compose without the overlay or set `PASSWORD_LOGIN_ENABLED=false`.
+- `backend/tests/test_password_login.py`.
+
+### Fixed
+- `cn()` now uses `extendTailwindMerge`, which knows the custom type scale (`text-caption`, `text-body`, `text-title`, `text-title-lg`, `text-display`, `text-display-lg`). Before, `text-title` was treated as a colour, so large primary buttons lost `text-primary-foreground` and showed dark text on blue.
+
+---
+
 ## [Unreleased] — 2026-09-27 — Sprint 0 (Business Source of Truth)
 
 ### Changed
